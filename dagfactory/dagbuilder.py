@@ -592,8 +592,19 @@ class DagBuilder:
         if dag_class.__name__ == "PelotonDepDag":
             dag_kwargs["depend_on_dags"] = dag_params.get("depend_on_dags", None)
             dag_kwargs["wait_on_dags"] = dag_params.get("wait_on_dags", None)
+
             dag_kwargs["depend_on_tasks"] = dag_params.get("depends_on_tasks", None)
+            if dag_kwargs["depend_on_tasks"]:
+                for task_dict in dag_kwargs["depend_on_tasks"]:
+                    if "upstream_task" in task_dict:
+                        task_dict["upstream_task"] = import_string(task_dict["upstream_task"])
+
             dag_kwargs["wait_on_tasks"] = dag_params.get("wait_on_tasks", None)
+            if dag_kwargs["wait_on_tasks"]:
+                for task_dict in dag_kwargs["wait_on_tasks"]:
+                    if "upstream_task" in task_dict:
+                        task_dict["upstream_task"] = import_string(task_dict["upstream_task"])
+
             dag_kwargs["alert_on_start"] = dag_params.get("alert_on_start", None)
             dag_kwargs["alert_on_finish"] = dag_params.get("alert_on_finish", None)
 
