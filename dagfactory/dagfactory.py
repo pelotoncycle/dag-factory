@@ -96,6 +96,7 @@ class DagFactory:
                     dag_factory = cls(config_filepath=sub_fpath, default_config=default_config)
                     dag_factory.generate_dags(globals)
                 except Exception as e:
+                    logger.info(e)
                     if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
                         import_failures[sub_fpath] = traceback.format_exc(
                             limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH
