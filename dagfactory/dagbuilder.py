@@ -8,7 +8,10 @@ from typing import Any, Callable, Dict, List, Union, Optional
 from airflow import DAG, configuration
 from airflow.models import BaseOperator, Variable
 from airflow.utils.module_loading import import_string
+from plugins.operators.dbt_operators.dbt_cli_operator import DbtCLIOperator
 from packaging import version
+
+from integrations.airflow_dbt.parser import DbtJobParser
 
 try:
     from airflow.version import version as AIRFLOW_VERSION
@@ -289,20 +292,23 @@ class DagBuilder:
             raise Exception(f"Failed to create {timetable_obj} due to: {err}") from err
         return schedule
 
+    @staticmethod
+    def import_operator_from_string(operator: str) -> Callable[..., BaseOperator]:
+        try:
+            # class is a Callable https://stackoverflow.com/a/34578836/3679900
+            return import_string(operator)
+        except Exception as err:
+            raise Exception(f"Failed to import operator: {operator}") from err
+
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    @staticmethod
-    def make_task(operator: str, task_params: Dict[str, Any]) -> BaseOperator:
+    def make_task(self, operator: str, task_params: Dict[str, Any]) -> BaseOperator:
         """
         Takes an operator and params and creates an instance of that operator.
 
         :returns: instance of operator object
         """
-        try:
-            # class is a Callable https://stackoverflow.com/a/34578836/3679900
-            operator_obj: Callable[..., BaseOperator] = import_string(operator)
-        except Exception as err:
-            raise Exception(f"Failed to import operator: {operator}") from err
+        operator_obj = self.import_operator_from_string(operator)
         # pylint: disable=too-many-nested-blocks
         try:
             if operator_obj in [PythonOperator, BranchPythonOperator, PythonSensor, ShortCircuitOperator]:
@@ -748,13 +754,23 @@ class DagBuilder:
                 dag.tags = dag_params.get("tags", None)
 
             tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
+            task_groups: Optional[Dict[str, Any]] = dag_params.get("task_groups", {})
 
             # add a property to mark this dag as an auto-generated on
             dag.is_dagfactory_auto_generated = True
 
+            # replace DBT tasks with task groups where DBT jobs are broken into one task per node
+            for task_name, task_conf in tasks.items():
+                operator: str = task_conf["operator"]
+                if isinstance(self.import_operator_from_string(operator), DbtCLIOperator) and \
+                        task_conf.get("expand_dbt_nodes"):
+                    # make tasks for each dbt nodes and task group to group all tasks
+                    dbt_job_parser = DbtJobParser(original_task_conf=task_conf, original_task_id=task_name)
+                    dbt_tasks, dbt_task_group = dbt_job_parser.expand_dbt_nodes()
+
             # create dictionary of task groups
             task_groups_dict: Dict[str, "TaskGroup"] = self.make_task_groups(
-                dag_params.get("task_groups", {}), dag
+                task_groups, dag
             )
 
             # create dictionary to track tasks and set dependencies
@@ -775,7 +791,7 @@ class DagBuilder:
                 params: Dict[str, Any] = {
                     k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS
                 }
-                task: BaseOperator = DagBuilder.make_task(
+                task: BaseOperator = self.make_task(
                     operator=operator, task_params=params
                 )
                 tasks_dict[task.task_id]: BaseOperator = task
