@@ -111,8 +111,7 @@ class DagFactory:
                 import_failures_reformatted += '\n' + f'Failed to generate dag from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
 
-            alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
-                           '_dag_factory_import_error_messenger'
+            alert_dag_id = 'dag_factory_import_error_messenger'
             with DAG(
                 dag_id=alert_dag_id,
                 schedule_interval="@once",
