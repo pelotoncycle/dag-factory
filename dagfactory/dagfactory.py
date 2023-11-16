@@ -23,6 +23,7 @@ from dagfactory.utils import merge_configs
 SYSTEM_PARAMS: List[str] = ["default", "task_groups"]
 ALLOWED_CONFIG_FILE_SUFFIX: List[str] = ["yaml", "yml"]
 CONFIG_FILENAME_REGEX = re.compile(r"_jc__*", flags=re.IGNORECASE)
+JOB_CONFIG_ROOT_FILENAME: str = "dag_factory.root"
 
 logger = logging.getLogger(__file__)
 
@@ -75,7 +76,13 @@ class DagFactory:
             self.config: Dict[str, Any] = config
 
     @classmethod
-    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None):
+    def from_directory(
+            cls,
+            config_dir,
+            globals: Dict[str, Any],
+            parent_default_config: Optional[Dict[str, Any]] = None,
+            dry_run: bool = False
+    ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
         """
@@ -107,7 +114,7 @@ class DagFactory:
         import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config)
+                cls.from_directory(sub_fpath, globals, default_config, dry_run)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if 'git/repo' in sub_fpath:
                     if CONFIG_FILENAME_REGEX.match(sub_fpath.split("/")[-1]):
@@ -120,7 +127,10 @@ class DagFactory:
                 # catch the errors so the rest of the dags can still be imported
                 try:
                     dag_factory = cls(config_filepath=sub_fpath, default_config=default_config)
-                    dag_factory.generate_dags(globals)
+                    if dry_run:
+                        dag_factory.compile_dags(globals)
+                    else:
+                        dag_factory.generate_dags(globals)
                 except Exception as e:
                     if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
                         import_failures[sub_fpath] = traceback.format_exc(
@@ -155,6 +165,11 @@ class DagFactory:
                     doc_json=import_failures_reformatted
                 )
             globals[alert_dag_id] = alert_dag
+
+    @staticmethod
+    def _ensure_job_configs_root(config_filepath: str) -> None:
+        if JOB_CONFIG_ROOT_FILENAME not in os.listdir(config_filepath):
+            raise Exception("Must be in the root of the job configs path to use dry run mode")
 
     @staticmethod
     def _validate_config_filepath(config_filepath: str) -> None:
@@ -210,7 +225,7 @@ class DagFactory:
             return self.default_config
         return self.config.get("default", {})
 
-    def build_dags(self) -> Dict[str, DAG]:
+    def build_dags(self, dry_run: bool = False) -> Dict[str, Union[DAG, Any]]:
         """Build DAGs using the config file."""
         dag_configs: Dict[str, Dict[str, Any]] = self.get_dag_configs()
         default_config: Dict[str, Any] = self.get_default_config()
@@ -224,22 +239,29 @@ class DagFactory:
                 dag_config=dag_config,
                 default_config=default_config,
             )
-            try:
-                dag: Dict[str, Union[str, DAG]] = dag_builder.build()
-                if isinstance(dag["dag"], DAG):
-                    dags[dag["dag_id"]]: DAG = dag["dag"]
-                elif isinstance(dag["dag"], str):
-                    logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
-            except Exception as err:
-                raise Exception(
-                    f"Failed to generate dag {dag_name}. verify config is correct"
-                ) from err
+
+            if dry_run:
+                compiled_dags: Dict[str, Any] = dag_builder.compile()
+                for dag_id, dag_config in compiled_dags.items():
+                    dags[dag_id] = dag_config
+
+            else:
+                try:
+                    dag: Dict[str, Union[str, DAG]] = dag_builder.build()
+                    if isinstance(dag["dag"], DAG):
+                        dags[dag["dag_id"]]: DAG = dag["dag"]
+                    elif isinstance(dag["dag"], str):
+                        logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
+                except Exception as err:
+                    raise Exception(
+                        f"Failed to generate dag {dag_name}. verify config is correct"
+                    ) from err
 
         return dags
 
     # pylint: disable=redefined-builtin
     @staticmethod
-    def register_dags(dags: Dict[str, DAG], globals: Dict[str, Any]) -> None:
+    def register_dags(dags: Dict[str, Union[DAG, Any]], globals: Dict[str, Any]) -> None:
         """Adds `dags` to `globals` so Airflow can discover them.
 
         :param: dags: Dict of DAGs to be registered.
@@ -247,9 +269,13 @@ class DagFactory:
             must be passed into globals() for Airflow to import
         """
         for dag_id, dag in dags.items():
-            globals[dag_id]: DAG = dag
+            globals[dag_id]: Union[DAG, Any] = dag
 
-    def generate_dags(self, globals: Dict[str, Any]) -> None:
+    def compile_dags(self, globals: Dict[str, Any], ) -> None:
+        dags: Dict[str, Any] = self.build_dags(dry_run=True)
+        self.register_dags(dags, globals)
+
+    def generate_dags(self, globals: Dict[str, Any], ) -> None:
         """
         Generates DAGs from YAML config
 
