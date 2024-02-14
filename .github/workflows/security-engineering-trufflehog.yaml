@@ -1,0 +1,10 @@
+name: TruffleHog Secrets Scanning
+
+on:
+  push:
+
+jobs:
+  trufflehog_secrets_scan:
+    uses: pelotoncycle/secauto_toolbox/.github/workflows/trufflehog_secrets_scanner.yml@main
+    secrets:
+      TRUFFLEHOG_HTTP_EVENT_TOKEN: ${{ secrets.TRUFFLEHOG_HTTP_EVENT_TOKEN }}
