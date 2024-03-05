@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Optional, Union
 
 from airflow.models import DAG, DagModel
@@ -104,12 +105,14 @@ class PelotonDepDag(DAG):
         self.alert_on_finish = alert_on_finish
         self.is_dag_active = is_dag_active
 
-        dag = DagModel.get_dagmodel(self.dag_id)
-        if dag:
-            if self.is_dag_active:
-                dag.set_is_paused(False)  
-            else:
-                dag.set_is_paused(True)
+        # sync status in Production environment
+        if os.environ["ENV"] == "prod":
+            dag = DagModel.get_dagmodel(self.dag_id)
+            if dag:
+                if self.is_dag_active:
+                    dag.set_is_paused(False)
+                else:
+                    dag.set_is_paused(True)
 
     def __exit__(self, _type, _value, _tb):
         roots = self.roots

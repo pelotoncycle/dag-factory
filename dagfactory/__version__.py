@@ -1,2 +1,2 @@
 """Module contains the version of dag-factory"""
-__version__ = "0.17.1.post11.dev1"
+__version__ = "0.17.1.post12"
