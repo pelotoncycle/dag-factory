@@ -1,7 +1,8 @@
 import logging
+import os
 from typing import List, Optional, Union
 
-from airflow.models import DAG
+from airflow.models import DAG, DagModel
 from airflow.operators.dummy import DummyOperator
 from airflow.models.baseoperator import BaseOperator
 
@@ -61,6 +62,8 @@ class PelotonDepDag(DAG):
     :param alert_on_finish: whether slack alert is sent on completion of the dag, default is false
     :type alert_on_finish: boolean
     all other parameters inherited from DAG would also apply
+    :param is_dag_active: flag indicating DAG being active as controlled by Airflow scheduler
+    :type is_dag_active: boolean
     """
 
     def __init__(
@@ -72,6 +75,7 @@ class PelotonDepDag(DAG):
             wait_on_tasks: Optional[List[dict]] = None,
             alert_on_start: bool = False,
             alert_on_finish: bool = False,
+            is_dag_active: bool = False,
             *args,
             **kwargs
     ):
@@ -99,6 +103,16 @@ class PelotonDepDag(DAG):
         self.wait_on_tasks = wait_on_tasks
         self.alert_on_start = alert_on_start
         self.alert_on_finish = alert_on_finish
+        self.is_dag_active = is_dag_active
+
+        # sync status in Production environment
+        if os.environ["ENV"] == "prod":
+            dag = DagModel.get_dagmodel(self.dag_id)
+            if dag:
+                if self.is_dag_active:
+                    dag.set_is_paused(False)
+                else:
+                    dag.set_is_paused(True)
 
     def __exit__(self, _type, _value, _tb):
         roots = self.roots

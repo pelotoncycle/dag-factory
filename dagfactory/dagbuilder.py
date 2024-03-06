@@ -716,6 +716,7 @@ class DagBuilder:
             dag_kwargs["wait_on_tasks"] = dag_params.get("wait_on_tasks", None)
             dag_kwargs["alert_on_start"] = dag_params.get("alert_on_start", None)
             dag_kwargs["alert_on_finish"] = dag_params.get("alert_on_finish", None)
+            dag_kwargs["is_dag_active"] = dag_params.get("is_dag_active", None)
 
         operator_defaults: Optional[Dict] = None
         if utils.check_dict_key(dag_params, "operator_defaults"):
