@@ -23,7 +23,7 @@ from dagfactory.utils import merge_configs
 SYSTEM_PARAMS: List[str] = ["default", "task_groups"]
 ALLOWED_CONFIG_FILE_SUFFIX: List[str] = ["yaml", "yml"]
 CONFIG_FILENAME_REGEX = re.compile(r"_jc__*", flags=re.IGNORECASE)
-JOB_CONFIG_ROOT_FILENAME: str = "dag_factory.root"
+# JOB_CONFIG_ROOT_FILENAME: str = ".job_configs.rt"
 
 logger = logging.getLogger(__file__)
 
@@ -74,6 +74,23 @@ class DagFactory:
                 self.config[dag_id]['doc_md'] = file_loc
         if config:
             self.config: Dict[str, Any] = config
+
+    # @staticmethod
+    # def get_job_configs_root(config_dir: str):
+    #     found_root = False
+    #     while not found_root
+    #
+    #     return
+
+    # @classmethod
+    # def from_directory(
+    #         cls,
+    #         config_dir,
+    #         globals: Dict[str, Any],
+    #         parent_default_config: Optional[Dict[str, Any]] = None,
+    #         dry_run: bool = False
+    # ):
+    #     job_configs_root =
 
     @classmethod
     def from_directory(
