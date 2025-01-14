@@ -16,13 +16,10 @@ def _get_url(log_url, namespace, environment):
     return log_url.replace("http://localhost:8080", host)
 
 
-# allowing slack alerts on Joey and Guy's namespace for testing.
 NAMESPACE_TO_SLACK = {
     "airflow": "slack",
-    "guyfeldman": "slack_guyfeldman",
-    "zhaoyuluo": "slack_luozhaoyu",
     "terryyin": "slack_terryyin",
-    "annajuchnicki": "slack_annajuchnicki"
+    "candaceholcombevolke": "slack_candaceholcombevolke"
 }
 
 START_COLOR = "#01FF70"
@@ -101,13 +98,13 @@ def _make_context(texts: list, context_element_types: list):
 
 
 def _slack_alert(
-        context,
-        mentions=None,
-        namespace=None,
-        slack_conn_id=None,
-        alert_type="failure",
-        level="task",
-        maintenance_window_violated=False
+    context,
+    mentions=None,
+    namespace=None,
+    slack_conn_id=None,
+    alert_type="failure",
+    level="task",
+    maintenance_window_violated=False
 ):
     slack_conn_id = slack_conn_id or NAMESPACE_TO_SLACK.get(namespace)
     if slack_conn_id is None:
@@ -189,6 +186,7 @@ def _slack_alert(
 
 
 def send_slack(http_conn_id=None, context=None, *args, **kwargs):
+    attachments = kwargs.get('attachments', [])
     if not http_conn_id:
         http_conn_id = NAMESPACE_TO_SLACK[get_namespace()]
     try:
@@ -199,7 +197,7 @@ def send_slack(http_conn_id=None, context=None, *args, **kwargs):
             *args,
             **kwargs,
         )
-        hook.execute()
+        hook.send(attachments=attachments)
     except Exception as e:
         logger.exception(
             "Could not send slack alert for task {} due to:{}".format(context, e)
@@ -269,6 +267,19 @@ def dag_success_slack_alert(slack_conn_id=None, mentions=None):
     return functools.partial(
         _slack_alert,
         alert_type="success",
+        level="dag",
+        slack_conn_id=slack_conn_id,
+        mentions=mentions,
+        namespace=namespace,
+    )
+
+def dag_fail_slack_alert(slack_conn_id=None, mentions=None):
+    namespace = get_namespace()
+    if isinstance(mentions, str):
+        mentions = [mentions]
+    return functools.partial(
+        _slack_alert,
+        alert_type="failure",
         level="dag",
         slack_conn_id=slack_conn_id,
         mentions=mentions,
