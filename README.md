@@ -1,119 +1,156 @@
 # dag-factory
 
-[![Github Actions](https://github.com/ajbosco/dag-factory/workflows/build/badge.svg?branch=master&event=push)](https://github.com/ajbosco/dag-factory/actions?workflow=build)
-[![Coverage](https://codecov.io/github/ajbosco/dag-factory/coverage.svg?branch=master)](https://codecov.io/github/ajbosco/dag-factory?branch=master)
+[![Github Actions](https://github.com/astronomer/dag-factory/actions/workflows/cicd.yaml/badge.svg?branch=main&event=push)](https://github.com/astronomer/dag-factory/actions?workflow=build)
+[![Coverage](https://codecov.io/github/astronomer/dag-factory/coverage.svg?branch=master)](https://codecov.io/github/astronomer/dag-factory?branch=master)
 [![PyPi](https://img.shields.io/pypi/v/dag-factory.svg)](https://pypi.org/project/dag-factory/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
-[![Downloads](https://pepy.tech/badge/dag-factory)](https://pepy.tech/project/dag-factory)
+[![Downloads](https://img.shields.io/pypi/dm/dag-factory.svg)](https://img.shields.io/pypi/dm/dag-factory)
 
-*dag-factory* is a library for dynamically generating [Apache Airflow](https://github.com/apache/incubator-airflow) DAGs from YAML configuration files.
-- [Installation](#installation)
-- [Usage](#usage)
+<img alt=analytics referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=2bb92a5b-beb3-48cc-a722-79dda1089eda" />
+
+Welcome to *dag-factory*! *dag-factory* is a library for [Apache Airflow®](https://airflow.apache.org) to construct DAGs
+declaratively via configuration files.
+
+The minimum requirements for **dag-factory** are:
+
+- Python 3.8.0+
+- [Apache Airflow®](https://airflow.apache.org) 2.0+
+
+For a gentle introduction, please take a look at our [Quickstart Guide](https://astronomer.github.io/dag-factory/latest/getting-started/quick-start-airflow-standalone/). For more examples, please see the
+[examples](/examples) folder.
+
+- [Quickstart](https://astronomer.github.io/dag-factory/latest/getting-started/quick-start-astro-cli/)
 - [Benefits](#benefits)
-- [Contributing](#contributing)
-  
-## Installation
+- [Features](#features)
+  - [Dynamically Mapped Tasks](https://astronomer.github.io/dag-factory/latest/features/dynamic_tasks/)
+  - [Multiple Configuration Files](#multiple-configuration-files)
+  - [Callbacks](#callbacks)
+  - [Custom Operators](#custom-operators)
+- [Notes](#notes)
+  - [HttpSensor (since 1.0.0)](#httpsensor-since-100)
+- [Contributing](https://astronomer.github.io/dag-factory/latest/contributing/howto/)
 
-To install *dag-factory* run `pip install dag-factory`. It requires Python 3.6.0+ and Apache Airflow 2.0+.
+## Benefits
 
-## Usage
+- Construct DAGs without knowing Python
+- Construct DAGs without learning Airflow primitives
+- Avoid duplicative code
+- Everyone loves YAML! ;)
 
-After installing *dag-factory* in your Airflow environment, there are two steps to creating DAGs. First, we need to create a YAML configuration file. For example:
+## Features
+
+### Multiple Configuration Files
+
+If you want to split your DAG configuration into multiple files, you can do so by leveraging a suffix in the configuration file name.
+
+```python
+    from dagfactory import load_yaml_dags  # load relevant YAML files as airflow DAGs
+
+    load_yaml_dags(globals_dict=globals(), suffix=['dag.yaml'])
+```
+
+### Custom Operators
+
+**dag-factory** supports using custom operators. To leverage, set the path to the custom operator within the `operator` key in the configuration file. You can add any additional parameters that the custom operator requires.
+
+```yaml
+...
+  tasks:
+    begin:
+      operator: airflow.operators.dummy_operator.DummyOperator
+    make_bread_1:
+      operator: customized.operators.breakfast_operators.MakeBreadOperator
+      bread_type: 'Sourdough'
+```
+
+![custom_operators.png](img/custom_operators.png)
+
+### Callbacks
+
+**dag-factory** also supports using "callbacks" at the DAG, Task, and TaskGroup level. These callbacks can be defined in
+a few different ways. The first points directly to a Python function that has been defined in the `include/callbacks.py`
+file.
 
 ```yaml
 example_dag1:
+  on_failure_callback: include.callbacks.example_callback1
+...
+```
+
+Here, the `on_success_callback` points to first a file, and then to a function name within that file. Notice that this
+callback is defined using `default_args`, meaning this callback will be applied to all tasks.
+
+```yaml
+example_dag1:
+  ...
   default_args:
-    owner: 'example_owner'
-    start_date: 2018-01-01  # or '2 days'
-    end_date: 2018-01-05
-    retries: 1
-    retry_delay_sec: 300
-  schedule_interval: '0 3 * * *'
-  concurrency: 1
-  max_active_runs: 1
-  dagrun_timeout_sec: 60
-  default_view: 'tree'  # or 'graph', 'duration', 'gantt', 'landing_times'
-  orientation: 'LR'  # or 'TB', 'RL', 'BT'
-  description: 'this is an example dag!'
-  on_success_callback_name: print_hello
-  on_success_callback_file: /usr/local/airflow/dags/print_hello.py
-  on_failure_callback_name: print_hello
-  on_failure_callback_file: /usr/local/airflow/dags/print_hello.py
-  tasks:
-    task_1:
-      operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 1'
-    task_2:
-      operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 2'
-      dependencies: [task_1]
-    task_3:
-      operator: airflow.operators.bash_operator.BashOperator
-      bash_command: 'echo 3'
-      dependencies: [task_1]
+    on_success_callback_file: /usr/local/airflow/include/callbacks.py
+    on_success_callback_name: example_callback1
 ```
 
-Then in the DAGs folder in your Airflow environment you need to create a python file like this:
+**dag-factory** users can also leverage provider-built tools when configuring callbacks. In this example, the
+`send_slack_notification` function from the Slack provider is used to dispatch a message when a DAG failure occurs. This
+function is passed to the `callback` key under `on_failure_callback`. This pattern allows for callback definitions to
+take parameters (such as `text`, `channel`, and `username`, as shown here).
 
-```python
-from airflow import DAG
-import dagfactory
+**Note that this functionality is currently only supported for `on_failure_callback`'s defined at the DAG-level, or in
+`default_args`. Support for other callback types and Task/TaskGroup-level definitions are coming soon.**
 
-dag_factory = dagfactory.DagFactory("/path/to/dags/config_file.yml")
-
-dag_factory.clean_dags(globals())
-dag_factory.generate_dags(globals())
+```yaml
+example_dag1:
+  on_failure_callback:
+    callback: airflow.providers.slack.notifications.slack.send_slack_notification
+    slack_conn_id: example_slack_id
+    text: |
+      :red_circle: Task Failed.
+      This task has failed and needs to be addressed.
+      Please remediate this issue ASAP.
+    channel: analytics-alerts
+    username: Airflow
+...
 ```
-
-And this DAG will be generated and ready to run in Airflow!
-
-If you have several configuration files you can import them like this:
-
-```python
-# 'airflow' word is required for the dagbag to parse this file
-from dagfactory import load_yaml_dags
-
-load_yaml_dags(globals_dict=globals(), suffix=['dag.yaml'])
-```
-
-![screenshot](/img/example_dag.png)
 
 ## Notes
 
-### HttpSensor (since 0.10.0)
+### HttpSensor (since 1.0.0)
 
-The package `airflow.sensors.http_sensor` works with all supported versions of Airflow. In Airflow 2.0+, the new package name can be used in the operator value: `airflow.providers.http.sensors.http`
+The package `airflow.providers.http.sensors.http` is available for Airflow 2.0+
 
 The following example shows `response_check` logic in a python file:
 
 ```yaml
 task_2:
-      operator: airflow.sensors.http_sensor.HttpSensor
-      http_conn_id: 'test-http'
-      method: 'GET'
-      response_check_name: check_sensor
-      response_check_file: /path/to/example1/http_conn.py
-      dependencies: [task_1]
+  operator: airflow.providers.http.sensors.http.HttpSensor
+  http_conn_id: 'test-http'
+  method: 'GET'
+  response_check_name: check_sensor
+  response_check_file: /path/to/example1/http_conn.py
+  dependencies: [task_1]
 ```
 
 The `response_check` logic can also be provided as a lambda:
 
 ```yaml
 task_2:
-      operator: airflow.sensors.http_sensor.HttpSensor
-      http_conn_id: 'test-http'
-      method: 'GET'
-      response_check_lambda: 'lambda response: "ok" in reponse.text'
-      dependencies: [task_1]
+  operator: airflow.providers.http.sensors.http.HttpSensor
+  http_conn_id: 'test-http'
+  method: 'GET'
+  response_check_lambda: 'lambda response: "ok" in response.text'
+  dependencies: [task_1]
 ```
 
-## Benefits
+## License
 
-* Construct DAGs without knowing Python
-* Construct DAGs without learning Airflow primitives
-* Avoid duplicative code
-* Everyone loves YAML! ;)
+To learn more about the terms and conditions for use, reproduction and distribution, read the [Apache License 2.0](https://github.com/astronomer/dag-factory/blob/main/LICENSE).
 
-## Contributing
+## Privacy Notice
 
-Contributions are welcome! Just submit a Pull Request or Github Issue.
+This project follows [Astronomer's Privacy Policy](https://www.astronomer.io/privacy/).
+
+For further information, [read this](https://github.com/astronomer/dag-factory/blob/main/PRIVACY_NOTICE.md)
+
+## Security Policy
+
+Check the project's [Security Policy](https://github.com/astronomer/dag-factory/blob/main/SECURITY.md) to learn
+how to report security vulnerabilities in DAG Factory and how security issues reported to the DAG Factory
+security team are handled.

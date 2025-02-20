@@ -10,7 +10,6 @@ __pycache__/
 .Python
 build/
 bin/
-include/
 develop-eggs/
 dist/
 downloads/
@@ -112,3 +111,21 @@ pip-selfcheck.json
 
 # sqllite db
 *.db
+
+
+# Airflow logs
+logs/
+
+# MacOS DS_Store
+*.DS_Store
+
+# VIM
+*.sw[a-z]
+
+# Airflow
+examples/.airflowignore
+airflow.cfg
+webserver_config.py
+
+# Astro
+dev/include/dag_factory-*
