@@ -143,7 +143,7 @@ class DagBuilder:
             dag_params: Dict[str, Any] = utils.merge_configs(self.dag_config, self.default_config)
         except Exception as err:
             raise Exception("Failed to merge config with default config") from err
-        dag_params["dag_id"]: str = dag_params.get("dag_id_prefix", "") + self.dag_name
+        dag_params["dag_id"]: str =  self.dag_name
 
         if utils.check_dict_key(dag_params, "schedule_interval") and dag_params["schedule_interval"] == "None":
             dag_params["schedule_interval"] = None
