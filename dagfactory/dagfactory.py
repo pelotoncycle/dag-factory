@@ -76,7 +76,7 @@ class DagFactory:
 
 
     @classmethod
-    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None):
+    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None, root_level: Optional[bool] = True):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
         """
@@ -87,8 +87,12 @@ class DagFactory:
         allowed_default_filename = ['default.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
         maybe_default_file = [sub for sub in subs if sub in allowed_default_filename]
 
+        # get root level datasets config if exist
+        allowed_datasets_filename = ['dataset.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
+        maybe_datasets_file = [sub for sub in subs if sub in allowed_datasets_filename]
+
         # get the configurations that are not default
-        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if sub not in maybe_default_file]
+        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if (sub not in maybe_default_file) and (root_level and sub not in maybe_datasets_file)]
 
         # if there is no default.yaml in current sub folder, use the defaults from the parent folder
         # if there is, merge the defaults
@@ -104,11 +108,17 @@ class DagFactory:
                 default_config
             )
 
+        # set root datasets file in config
+        if root_level and len(maybe_datasets_file) > 0:
+            datasets_file = maybe_datasets_file[0]
+            datasets_file = os.path.join(config_dir, datasets_file)
+            default_config["datasets_config_file"] = datasets_file
+            
         # load dags from each yaml configuration files
         import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config)
+                cls.from_directory(sub_fpath, globals, default_config, root_level=False)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if 'git/repo/dags/' in sub_fpath:
                     if sub_fpath.split("/")[-1].startswith("_jc__"):

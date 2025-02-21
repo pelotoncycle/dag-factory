@@ -125,12 +125,13 @@ class DagBuilder:
     """
 
     def __init__(
-        self, dag_name: str, dag_config: Dict[str, Any], default_config: Dict[str, Any], yml_dag: str = ""
+        self, dag_name: str, dag_config: Dict[str, Any], default_config: Dict[str, Any], yml_dag: str = "", enforce_global_datasets: bool = True
     ) -> None:
         self.dag_name: str = dag_name
         self.dag_config: Dict[str, Any] = deepcopy(dag_config)
         self.default_config: Dict[str, Any] = deepcopy(default_config)
         self._yml_dag = yml_dag
+        self.enforce_global_datasets: bool = enforce_global_datasets
 
     # pylint: disable=too-many-branches,too-many-statements
     def get_dag_params(self) -> Dict[str, Any]:
@@ -683,7 +684,7 @@ class DagBuilder:
         return evaluated_condition
 
     @staticmethod
-    def process_file_with_datasets(file: str, datasets_conditions: str) -> Any:
+    def process_file_with_datasets(file: str, datasets_conditions: str, strict: bool = False) -> Any:
         """
         Processes datasets from a file and evaluates conditions if provided.
 
@@ -697,7 +698,6 @@ class DagBuilder:
         """
         is_airflow_version_at_least_2_9 = version.parse(AIRFLOW_VERSION) >= version.parse("2.9.0")
         datasets_conditions, dataset_map = DagBuilder._extract_and_transform_datasets(datasets_conditions)
-
         if is_airflow_version_at_least_2_9:
             map_datasets = utils.get_datasets_map_uri_yaml_file(file, list(dataset_map.keys()))
             dataset_map = {alias_dataset: Dataset(uri) for alias_dataset, uri in map_datasets.items()}
@@ -708,7 +708,7 @@ class DagBuilder:
             return [Dataset(uri) for uri in datasets_uri]
 
     @staticmethod
-    def configure_schedule(dag_params: Dict[str, Any], dag_kwargs: Dict[str, Any]) -> None:
+    def configure_schedule(dag_params: Dict[str, Any], dag_kwargs: Dict[str, Any], enforce_global_dataset_file: bool = False) -> None:
         """
         Configures the schedule for the DAG based on parameters and the Airflow version.
 
@@ -728,11 +728,18 @@ class DagBuilder:
 
         if has_schedule_attr and not has_schedule_interval_attr and is_airflow_version_at_least_2_4:
             schedule: Dict[str, Any] = dag_params.get("schedule")
-
+            has_global_datasets_file_attr = utils.check_dict_key(dag_params, "datasets_config_file")
             has_file_attr = utils.check_dict_key(schedule, "file")
             has_datasets_attr = utils.check_dict_key(schedule, "datasets")
-
-            if has_file_attr and has_datasets_attr:
+            if enforce_global_dataset_file:
+                if has_global_datasets_file_attr:
+                    file = dag_params.get("datasets_config_file")
+                    datasets: Union[List[str], str] = schedule.get("datasets")
+                    datasets_conditions: str = utils.parse_list_datasets(datasets)
+                    dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions)
+                else:
+                    raise DagFactoryConfigException("Datasets must be declared in the root datasets.yml file")
+            elif has_file_attr and has_datasets_attr:
                 file = schedule.get("file")
                 datasets: Union[List[str], str] = schedule.get("datasets")
                 datasets_conditions: str = utils.parse_list_datasets(datasets)
@@ -838,7 +845,7 @@ class DagBuilder:
 
         dag_kwargs["is_paused_upon_creation"] = dag_params.get("is_paused_upon_creation", None)
 
-        DagBuilder.configure_schedule(dag_params, dag_kwargs)
+        DagBuilder.configure_schedule(dag_params, dag_kwargs, self.enforce_global_datasets)
 
         dag_kwargs["params"] = dag_params.get("params", None)
 
