@@ -92,7 +92,7 @@ class DagFactory:
         maybe_datasets_file = [sub for sub in subs if sub in allowed_datasets_filename]
 
         # get the configurations that are not default
-        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if (sub not in maybe_default_file) and (root_level and sub not in maybe_datasets_file)]
+        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if (sub not in maybe_default_file) and (sub not in maybe_datasets_file)]
 
         # if there is no default.yaml in current sub folder, use the defaults from the parent folder
         # if there is, merge the defaults
