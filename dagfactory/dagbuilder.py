@@ -910,6 +910,7 @@ class DagBuilder:
         task_groups_dict: Dict[str, "TaskGroup"] = self.make_task_groups(dag_params.get("task_groups", {}), dag)
 
         # create dictionary to track tasks and set dependencies
+        tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
         tasks_dict: Dict[str, BaseOperator] = {}
         tasks_tuples = self.topological_sort_tasks(tasks)
         for task_name, task_conf in tasks_tuples:
