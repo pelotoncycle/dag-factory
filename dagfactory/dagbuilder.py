@@ -920,14 +920,14 @@ class DagBuilder:
             if task_groups_dict and task_conf.get("task_group_name"):
                 task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
                             # merge task configs with global task configs if there's any
-            if operator_defaults and operator in set(operator_defaults.keys()):
-                task_conf = merge_configs(task_conf, operator_defaults[operator])
-                
+
             params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
 
             if "operator" in task_conf:
                 operator: str = task_conf["operator"]
-
+                
+                if operator_defaults and operator in set(operator_defaults.keys()):
+                    task_conf = merge_configs(task_conf, operator_defaults[operator])
                 # Dynamic task mapping available only in Airflow >= 2.3.0
                 if task_conf.get("expand"):
                     if version.parse(AIRFLOW_VERSION) < version.parse("2.3.0"):
