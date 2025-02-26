@@ -921,8 +921,6 @@ class DagBuilder:
                 task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
                             # merge task configs with global task configs if there's any
 
-            params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
-
             if "operator" in task_conf:
                 operator: str = task_conf["operator"]
                 
@@ -934,11 +932,12 @@ class DagBuilder:
                         raise DagFactoryConfigException("Dynamic task mapping available only in Airflow >= 2.3.0")
                     else:
                         task_conf = self.replace_expand_values(task_conf, tasks_dict)
-
+                params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
                 task: Union[BaseOperator, MappedOperator] = DagBuilder.make_task(operator=operator, task_params=params)
                 tasks_dict[task.task_id]: BaseOperator = task
 
             elif "decorator" in task_conf:
+                params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
                 task = DagBuilder.make_decorator(
                     decorator_import_path=task_conf["decorator"], task_params=params, tasks_dict=tasks_dict
                 )
