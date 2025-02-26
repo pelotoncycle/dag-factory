@@ -135,7 +135,7 @@ class DagFactory:
                     logger.info(f"Generate dag: {default_config}")
                     dag_factory = cls(config_filepath=sub_fpath, default_config=default_config)
                     dag_factory.generate_dags(globals)
-                except Exception as e:
+                except DagFactoryException as e:
                     logger.info(f"Invalid dag config: {import_failures}")
                     logger.info(f"Import error message: {str(e)}")
                     if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
