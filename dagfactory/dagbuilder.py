@@ -1204,6 +1204,9 @@ class DagBuilder:
                     # to update the config ... parameters[callback_type]: Callable = partial(...)
                     if hasattr(on_state_callback_callable, "notify"):
                         return on_state_callback_callable(**on_state_callback_params)
+                    
+                    if isinstance(on_state_callback_callable, partial):
+                        on_state_callback_callable = on_state_callback_callable()
 
                     return partial(on_state_callback_callable, **on_state_callback_params)
 
