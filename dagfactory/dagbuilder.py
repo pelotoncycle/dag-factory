@@ -905,48 +905,48 @@ class DagBuilder:
             # add a property to mark this dag as an auto-generated on
             dag.is_dagfactory_auto_generated = True
 
-            
-        # create dictionary of task groups
-        task_groups_dict: Dict[str, "TaskGroup"] = self.make_task_groups(dag_params.get("task_groups", {}), dag)
-
-        # create dictionary to track tasks and set dependencies
-        tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
-        tasks_dict: Dict[str, BaseOperator] = {}
-        tasks_tuples = self.topological_sort_tasks(tasks)
-        for task_name, task_conf in tasks_tuples:
-            task_conf["task_id"]: str = task_name
-            task_conf["dag"]: DAG = dag
-
-            if task_groups_dict and task_conf.get("task_group_name"):
-                task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
-                            # merge task configs with global task configs if there's any
-
-            if "operator" in task_conf:
-                operator: str = task_conf["operator"]
                 
-                if operator_defaults and operator in set(operator_defaults.keys()):
-                    task_conf = merge_configs(task_conf, operator_defaults[operator])
-                # Dynamic task mapping available only in Airflow >= 2.3.0
-                if task_conf.get("expand"):
-                    if version.parse(AIRFLOW_VERSION) < version.parse("2.3.0"):
-                        raise DagFactoryConfigException("Dynamic task mapping available only in Airflow >= 2.3.0")
-                    else:
-                        task_conf = self.replace_expand_values(task_conf, tasks_dict)
-                params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
-                task: Union[BaseOperator, MappedOperator] = DagBuilder.make_task(operator=operator, task_params=params)
-                tasks_dict[task.task_id]: BaseOperator = task
+            # create dictionary of task groups
+            task_groups_dict: Dict[str, "TaskGroup"] = self.make_task_groups(dag_params.get("task_groups", {}), dag)
 
-            elif "decorator" in task_conf:
-                params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
-                task = DagBuilder.make_decorator(
-                    decorator_import_path=task_conf["decorator"], task_params=params, tasks_dict=tasks_dict
-                )
-                tasks_dict[task_name]: BaseOperator = task
-            else:
-                raise DagFactoryConfigException("Tasks must define either 'operator' or 'decorator")
+            # create dictionary to track tasks and set dependencies
+            tasks: Dict[str, Dict[str, Any]] = dag_params["tasks"]
+            tasks_dict: Dict[str, BaseOperator] = {}
+            tasks_tuples = self.topological_sort_tasks(tasks)
+            for task_name, task_conf in tasks_tuples:
+                task_conf["task_id"]: str = task_name
+                task_conf["dag"]: DAG = dag
 
-        # set task dependencies after creating tasks
-        self.set_dependencies(tasks, tasks_dict, dag_params.get("task_groups", {}), task_groups_dict)
+                if task_groups_dict and task_conf.get("task_group_name"):
+                    task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
+                                # merge task configs with global task configs if there's any
+
+                if "operator" in task_conf:
+                    operator: str = task_conf["operator"]
+                    
+                    if operator_defaults and operator in set(operator_defaults.keys()):
+                        task_conf = merge_configs(task_conf, operator_defaults[operator])
+                    # Dynamic task mapping available only in Airflow >= 2.3.0
+                    if task_conf.get("expand"):
+                        if version.parse(AIRFLOW_VERSION) < version.parse("2.3.0"):
+                            raise DagFactoryConfigException("Dynamic task mapping available only in Airflow >= 2.3.0")
+                        else:
+                            task_conf = self.replace_expand_values(task_conf, tasks_dict)
+                    params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
+                    task: Union[BaseOperator, MappedOperator] = DagBuilder.make_task(operator=operator, task_params=params)
+                    tasks_dict[task.task_id]: BaseOperator = task
+
+                elif "decorator" in task_conf:
+                    params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
+                    task = DagBuilder.make_decorator(
+                        decorator_import_path=task_conf["decorator"], task_params=params, tasks_dict=tasks_dict
+                    )
+                    tasks_dict[task_name]: BaseOperator = task
+                else:
+                    raise DagFactoryConfigException("Tasks must define either 'operator' or 'decorator")
+
+            # set task dependencies after creating tasks
+            self.set_dependencies(tasks, tasks_dict, dag_params.get("task_groups", {}), task_groups_dict)
 
         return {"dag_id": dag_params["dag_id"], "dag": dag}
 
