@@ -14,6 +14,13 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import Any, Callable, Dict, List, Tuple, Union, Optional
 
+# get_annotations added in 3.10
+try:
+    from inspect import get_annotations
+except:
+    def get_annotations(func):
+        return func.__annotations__
+
 from airflow import DAG, configuration
 from airflow.models import BaseOperator, Variable
 from airflow.utils.module_loading import import_string
@@ -1205,7 +1212,9 @@ class DagBuilder:
                     if hasattr(on_state_callback_callable, "notify"):
                         return on_state_callback_callable(**on_state_callback_params)
                     
-                    if isinstance(on_state_callback_callable, partial):
+                    annotations = get_annotations(on_state_callback_callable)
+                    return_type = annotations.get("return", "")
+                    if return_type == partial:
                         return on_state_callback_callable(**on_state_callback_params)
 
                     return partial(on_state_callback_callable, **on_state_callback_params)
