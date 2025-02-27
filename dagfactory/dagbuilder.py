@@ -1206,7 +1206,7 @@ class DagBuilder:
                         return on_state_callback_callable(**on_state_callback_params)
                     
                     if isinstance(on_state_callback_callable, partial):
-                        on_state_callback_callable = on_state_callback_callable()
+                        return on_state_callback_callable(**on_state_callback_params)
 
                     return partial(on_state_callback_callable, **on_state_callback_params)
 
