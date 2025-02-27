@@ -14,7 +14,7 @@ from typing import Any, AnyStr, Dict, List, Match, Optional, Pattern, Tuple, Uni
 import pendulum
 import yaml
 
-from dagfactory.exceptions import DagFactoryException
+from dagfactory.exceptions import DagFactoryException, DagFactoryConfigException
 
 
 def get_datetime(date_value: Union[str, datetime, date], timezone: str = "UTC") -> datetime:
@@ -270,7 +270,7 @@ def get_datasets_uri_yaml_file(file_path: str, datasets_filter: str) -> List[str
 
             datasets = data.get("datasets", [])
             datasets_result_uri = [
-                dataset["uri"] for dataset in datasets if dataset["name"] in datasets_filter and "uri" in dataset
+                dataset["uri"] for dataset in datasets if dataset["name"] in datasets_filter and "uri" in dataset and validate_uri(dataset["uri"])
             ]
             return datasets_result_uri
     except FileNotFoundError:
@@ -297,7 +297,7 @@ def get_datasets_map_uri_yaml_file(file_path: str, datasets_filter: str) -> Dict
             datasets_result_dict = {
                 dataset["name"]: dataset["uri"]
                 for dataset in datasets
-                if dataset["name"] in datasets_filter and "uri" in dataset
+                if dataset["name"] in datasets_filter and "uri" in dataset and validate_uri(dataset["uri"])
             }
             return datasets_result_dict
     except FileNotFoundError:
@@ -325,3 +325,17 @@ def parse_list_datasets(datasets: Union[List[str], str]) -> str:
     if isinstance(datasets, list):
         datasets = " & ".join(datasets)
     return datasets
+
+def validate_uri(uri: str) -> bool:
+    pattern = r"([a-zA-Z][a-zA-Z0-9+.-])*://([a-zA-Z0-9\-_/\.])+"
+    match = re.match(pattern, uri)
+    if not match:
+        raise DagFactoryConfigException(f"Invalid uri: {uri}")
+    scheme = match.group(1)
+    if scheme == "redshift":
+        redshift_pattern = r"^redshift://([^\.\s\t\"\']+\.){3}[^\.\s\t\"\']+$"
+        match = re.match(redshift_pattern, uri)
+        if not match:
+            raise DagFactoryConfigException(f"Invalid redshift uri: {uri} must be of format redshift://cluster.db.schema.table")
+    return True
+    
