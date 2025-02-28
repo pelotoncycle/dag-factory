@@ -43,7 +43,8 @@ class DagFactory:
             self,
             config_filepath: Optional[str] = None,
             default_config: Optional[dict] = None,
-            config: Optional[dict] = None
+            config: Optional[dict] = None,
+            enforce_global_datasets: Optional[bool] = False
     ) -> None:
         assert bool(config_filepath) ^ bool(
             config
@@ -72,6 +73,7 @@ class DagFactory:
                 self.config[dag_id]['doc_md'] = file_loc
         if config:
             self.config: Dict[str, Any] = config
+        self.enforce_global_datasets: bool = enforce_global_datasets
 
 
 
@@ -105,14 +107,15 @@ class DagFactory:
                 cls._load_config(
                     config_filepath=default_fpath
                 ),
-                default_config
+                default_config,
+                keep_default_values=["dataset_config_file"]
             )
 
         # set root datasets file in config
         if root_level and len(maybe_datasets_file) > 0:
             datasets_file = maybe_datasets_file[0]
             datasets_file = os.path.join(config_dir, datasets_file)
-            default_config["datasets_config_file"] = datasets_file
+            default_config["dataset_config_file"] = datasets_file
             
         # load dags from each yaml configuration files
         import_failures = {}
@@ -133,7 +136,7 @@ class DagFactory:
                 try:
                     logger.info(f"Reading dag config file: {sub_fpath}")
                     logger.info(f"Generate dag: {default_config}")
-                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config)
+                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True)
                     dag_factory.generate_dags(globals)
                 except Exception as e:
                     logger.info(f"Invalid dag config: {import_failures}")
@@ -267,6 +270,7 @@ class DagFactory:
                 dag_config=dag_config,
                 default_config=default_config,
                 yml_dag=self._serialise_config_md(dag_name, dag_config, default_config),
+                enforce_global_datasets=self.enforce_global_datasets
             )
             try:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()

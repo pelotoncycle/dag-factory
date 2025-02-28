@@ -147,8 +147,9 @@ class DagBuilder:
 
         :returns: dict of dag parameters
         """
+        keep_default_values = ["dataset_config_file"] if self.enforce_global_datasets else []
         try:
-            dag_params: Dict[str, Any] = utils.merge_configs(self.dag_config, self.default_config)
+            dag_params: Dict[str, Any] = utils.merge_configs(self.dag_config, self.default_config, keep_default_values=keep_default_values)
         except Exception as err:
             raise Exception("Failed to merge config with default config") from err
         dag_params["dag_id"]: str =  self.dag_name
@@ -691,7 +692,7 @@ class DagBuilder:
         return evaluated_condition
 
     @staticmethod
-    def process_file_with_datasets(file: str, datasets_conditions: str, strict: bool = False) -> Any:
+    def process_file_with_datasets(file: str, datasets_conditions: str, default_dataset_file: str) -> Any:
         """
         Processes datasets from a file and evaluates conditions if provided.
 
@@ -707,6 +708,9 @@ class DagBuilder:
         datasets_conditions, dataset_map = DagBuilder._extract_and_transform_datasets(datasets_conditions)
         if is_airflow_version_at_least_2_9:
             map_datasets = utils.get_datasets_map_uri_yaml_file(file, list(dataset_map.keys()))
+            if default_dataset_file:
+                default_datasets = utils.get_datasets_map_uri_yaml_file(default_dataset_file, list(dataset_map.keys()))
+            map_datasets = merge_configs(map_datasets, default_datasets)
             dataset_map = {alias_dataset: Dataset(uri) for alias_dataset, uri in map_datasets.items()}
             evaluated_condition = DagBuilder.safe_eval(datasets_conditions, dataset_map)
             return evaluated_condition
@@ -735,12 +739,12 @@ class DagBuilder:
 
         if has_schedule_attr and not has_schedule_interval_attr and is_airflow_version_at_least_2_4:
             schedule: Dict[str, Any] = dag_params.get("schedule")
-            has_global_datasets_file_attr = utils.check_dict_key(dag_params, "datasets_config_file")
+            has_global_datasets_file_attr = utils.check_dict_key(dag_params, "dataset_config_file")
             has_file_attr = utils.check_dict_key(schedule, "file")
             has_datasets_attr = utils.check_dict_key(schedule, "datasets")
             if enforce_global_dataset_file:
                 if has_global_datasets_file_attr:
-                    file = dag_params.get("datasets_config_file")
+                    file = dag_params.get("dataset_config_file")
                     datasets: Union[List[str], str] = schedule.get("datasets")
                     datasets_conditions: str = utils.parse_list_datasets(datasets)
                     dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions)
@@ -750,7 +754,8 @@ class DagBuilder:
                 file = schedule.get("file")
                 datasets: Union[List[str], str] = schedule.get("datasets")
                 datasets_conditions: str = utils.parse_list_datasets(datasets)
-                dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions)
+                default_dataset_file = dag_params.get("dataset_config_file") if has_global_datasets_file_attr else None
+                dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions, default_dataset_file=default_dataset_file)
 
             elif has_datasets_attr and is_airflow_version_at_least_2_9:
                 datasets = schedule["datasets"]

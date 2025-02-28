@@ -80,7 +80,7 @@ def get_time_delta(time_string: str) -> timedelta:
 
 
 def merge_configs(
-    config: Dict[str, Any], default_config: Dict[str, Any], combine_key_values: list = ['tags', 'template_searchpath']
+    config: Dict[str, Any], default_config: Dict[str, Any], combine_key_values: list = ['tags', 'template_searchpath'], keep_default_values: list[str] = []
 ) -> Dict[str, Any]:
     """
     Merges a `default` config with DAG config. Used to set default values
@@ -94,7 +94,7 @@ def merge_configs(
     :type: Dict[str, Any]
     """
     for key in default_config:
-        if key in config:
+        if key in config and key not in keep_default_values:
             if isinstance(config[key], dict) and isinstance(default_config[key], dict):
                 merge_configs(config[key], default_config[key])
             elif isinstance(config[key], list) and isinstance(default_config[key], list) and key in combine_key_values:
