@@ -1070,9 +1070,10 @@ class DagBuilder:
                 if Variable.get(variable["variable"], default_var=None) is not None:
                     task_params[variable["attribute"]] = Variable.get(variable["variable"], default_var=None)
             del task_params["variables_as_arguments"]
-
+        
+        has_default_datasets_file = utils.check_dict_key(task_params, "dataset_config_file")            
         if utils.check_dict_key(task_params, "outlets") and version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
-            has_default_datasets_file = utils.check_dict_key(task_params, "dataset_config_file")
+            
             if enforce_global_datasets and has_default_datasets_file and utils.check_dict_key(
                 task_params["outlets"], "datasets"
             ):
@@ -1084,7 +1085,7 @@ class DagBuilder:
                     missing = datasets_filter.difference(set(found_dataset_keys))
                     raise DagFactoryConfigException(f"Datsets not included in global config: {missing}")
                 datasets_uri = list(datasets_uri_map.items())
-                del task_params["dataset_config_file"]
+                
             elif utils.check_dict_key(task_params["outlets"], "file") and utils.check_dict_key(
                 task_params["outlets"], "datasets"
             ):
@@ -1098,6 +1099,8 @@ class DagBuilder:
                 datasets_uri = task_params["outlets"]
 
             task_params["outlets"] = [Dataset(uri) for uri in datasets_uri]
+        if has_default_datasets_file:
+            del task_params["dataset_config_file"]
 
     @staticmethod
     def make_decorator(
