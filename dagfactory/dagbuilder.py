@@ -278,7 +278,7 @@ class DagBuilder:
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-locals
     @staticmethod
-    def make_task(operator: str, task_params: Dict[str, Any]) -> BaseOperator:
+    def make_task(operator: str, task_params: Dict[str, Any], enforce_global_datasets: Optional[bool] = False) -> BaseOperator:
         """
         Takes an operator and params and creates an instance of that operator.
 
@@ -441,8 +441,8 @@ class DagBuilder:
                     if task_params.get("init_containers") is not None
                     else None
                 )
-
-            DagBuilder.adjust_general_task_params(task_params)
+                
+            DagBuilder.adjust_general_task_params(task_params, enforce_global_datasets=enforce_global_datasets)
 
             expand_kwargs: Dict[str, Union[Dict[str, Any], Any]] = {}
             # expand available only in airflow >= 2.3.0
@@ -719,7 +719,7 @@ class DagBuilder:
             return [Dataset(uri) for uri in datasets_uri]
 
     @staticmethod
-    def configure_schedule(dag_params: Dict[str, Any], dag_kwargs: Dict[str, Any], enforce_global_dataset_file: bool = False) -> None:
+    def configure_schedule(dag_params: Dict[str, Any], dag_kwargs: Dict[str, Any], enforce_global_datasets: bool = False) -> None:
         """
         Configures the schedule for the DAG based on parameters and the Airflow version.
 
@@ -742,7 +742,7 @@ class DagBuilder:
             has_global_datasets_file_attr = utils.check_dict_key(dag_params, "dataset_config_file")
             has_file_attr = utils.check_dict_key(schedule, "file")
             has_datasets_attr = utils.check_dict_key(schedule, "datasets")
-            if enforce_global_dataset_file:
+            if enforce_global_datasets:
                 if has_global_datasets_file_attr:
                     file = dag_params.get("dataset_config_file")
                     datasets: Union[List[str], str] = schedule.get("datasets")
@@ -932,7 +932,9 @@ class DagBuilder:
                 if task_groups_dict and task_conf.get("task_group_name"):
                     task_conf["task_group"] = task_groups_dict[task_conf.get("task_group_name")]
                                 # merge task configs with global task configs if there's any
-
+                if utils.check_dict_key(dag_params, "dataset_config_file"):
+                    task_conf["dataset_config_file"]: str = dag_params.get("dataset_config_file")
+                
                 if "operator" in task_conf:
                     operator: str = task_conf["operator"]
                     
@@ -1010,7 +1012,7 @@ class DagBuilder:
         return sorted_tasks
 
     @staticmethod
-    def adjust_general_task_params(task_params: dict(str, Any)):
+    def adjust_general_task_params(task_params: dict(str, Any), enforce_global_datasets: Optional[bool] = False):
         """Adjusts in place the task params argument"""
         if utils.check_dict_key(task_params, "execution_timeout_secs"):
             task_params["execution_timeout"]: timedelta = timedelta(seconds=task_params["execution_timeout_secs"])
@@ -1070,7 +1072,20 @@ class DagBuilder:
             del task_params["variables_as_arguments"]
 
         if utils.check_dict_key(task_params, "outlets") and version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
-            if utils.check_dict_key(task_params["outlets"], "file") and utils.check_dict_key(
+            has_default_datasets_file = utils.check_dict_key(task_params, "dataset_config_file")
+            if enforce_global_datasets and has_default_datasets_file and utils.check_dict_key(
+                task_params["outlets"], "datasets"
+            ):
+                file = task_params["dataset_config_file"]
+                datasets_filter = set(task_params["outlets"])
+                datasets_uri_map = utils.get_datasets_map_uri_yaml_file(file, datasets_filter)
+                found_dataset_keys = datasets_uri_map.keys()
+                if found_dataset_keys != datasets_filter:
+                    missing = datasets_filter.difference(set(found_dataset_keys))
+                    raise DagFactoryConfigException(f"Datsets not included in global config: {missing}")
+                datasets_uri = list(datasets_uri_map.items())
+                del task_params["dataset_config_file"]
+            elif utils.check_dict_key(task_params["outlets"], "file") and utils.check_dict_key(
                 task_params["outlets"], "datasets"
             ):
                 file = task_params["outlets"]["file"]

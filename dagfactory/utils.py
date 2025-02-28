@@ -9,7 +9,7 @@ import sys
 import types
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, AnyStr, Dict, List, Match, Optional, Pattern, Tuple, Union
+from typing import Any, AnyStr, Dict, List, Match, Optional, Pattern, Tuple, Union, Set
 
 import pendulum
 import yaml
@@ -278,7 +278,7 @@ def get_datasets_uri_yaml_file(file_path: str, datasets_filter: str) -> List[str
         raise
 
 
-def get_datasets_map_uri_yaml_file(file_path: str, datasets_filter: str) -> Dict[str, str]:
+def get_datasets_map_uri_yaml_file(file_path: str, datasets_filter: Union[List[str]|Set[str]]) -> Dict[str, str]:
     """
     Retrieves the URIs of datasets from a YAML file based on a given filter.
 
