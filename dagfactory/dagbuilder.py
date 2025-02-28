@@ -692,7 +692,7 @@ class DagBuilder:
         return evaluated_condition
 
     @staticmethod
-    def process_file_with_datasets(file: str, datasets_conditions: str, default_dataset_file: str) -> Any:
+    def process_file_with_datasets(file: str, datasets_conditions: str, default_dataset_file: Optional[str] = None) -> Any:
         """
         Processes datasets from a file and evaluates conditions if provided.
 
