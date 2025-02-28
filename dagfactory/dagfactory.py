@@ -90,7 +90,7 @@ class DagFactory:
         maybe_default_file = [sub for sub in subs if sub in allowed_default_filename]
 
         # get root level datasets config if exist
-        allowed_datasets_filename = ['dataset.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
+        allowed_datasets_filename = ['datasets.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
         maybe_datasets_file = [sub for sub in subs if sub in allowed_datasets_filename]
 
         # get the configurations that are not default
