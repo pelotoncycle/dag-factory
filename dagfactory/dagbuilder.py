@@ -710,7 +710,7 @@ class DagBuilder:
             map_datasets = utils.get_datasets_map_uri_yaml_file(file, list(dataset_map.keys()))
             if default_dataset_file:
                 default_datasets = utils.get_datasets_map_uri_yaml_file(default_dataset_file, list(dataset_map.keys()))
-            map_datasets = merge_configs(map_datasets, default_datasets)
+                map_datasets = merge_configs(map_datasets, default_datasets)
             dataset_map = {alias_dataset: Dataset(uri) for alias_dataset, uri in map_datasets.items()}
             evaluated_condition = DagBuilder.safe_eval(datasets_conditions, dataset_map)
             return evaluated_condition
