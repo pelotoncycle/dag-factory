@@ -1086,7 +1086,7 @@ class DagBuilder:
                 if found_dataset_keys != datasets_filter:
                     missing = datasets_filter.difference(set(found_dataset_keys))
                     raise DagFactoryConfigException(f"Datsets not included in global config: {missing}")
-                datasets_uri = list(datasets_uri_map.items())
+                datasets_uri = list(datasets_uri_map.values())
                 
             elif utils.check_dict_key(task_params["outlets"], "file") and utils.check_dict_key(
                 task_params["outlets"], "datasets"
