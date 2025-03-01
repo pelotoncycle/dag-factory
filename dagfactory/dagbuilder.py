@@ -1106,7 +1106,7 @@ class DagBuilder:
 
     @staticmethod
     def make_decorator(
-        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any), enforce_global_datasets Optiona[bool] = False
+        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any), enforce_global_datasets: Optiona[bool] = False
     ) -> BaseOperator:
         """
         Takes a decorator and params and creates an instance of that decorator.
