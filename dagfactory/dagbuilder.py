@@ -947,13 +947,18 @@ class DagBuilder:
                         else:
                             task_conf = self.replace_expand_values(task_conf, tasks_dict)
                     params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
-                    task: Union[BaseOperator, MappedOperator] = DagBuilder.make_task(operator=operator, task_params=params)
+                    task: Union[BaseOperator, MappedOperator] = DagBuilder.make_task(operator=operator, 
+                                                                                     task_params=params, 
+                                                                                     enforce_global_datasets=self.enforce_global_datasets)
                     tasks_dict[task.task_id]: BaseOperator = task
 
                 elif "decorator" in task_conf:
                     params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
                     task = DagBuilder.make_decorator(
-                        decorator_import_path=task_conf["decorator"], task_params=params, tasks_dict=tasks_dict
+                        decorator_import_path=task_conf["decorator"], 
+                        task_params=params, 
+                        tasks_dict=tasks_dict, 
+                        enforce_global_datasets=self.enforce_global_datasets
                     )
                     tasks_dict[task_name]: BaseOperator = task
                 else:
@@ -1073,7 +1078,6 @@ class DagBuilder:
         
         has_default_datasets_file = utils.check_dict_key(task_params, "dataset_config_file")            
         if utils.check_dict_key(task_params, "outlets") and version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
-            
             if enforce_global_datasets and has_default_datasets_file:
                 file = task_params["dataset_config_file"]
                 datasets_filter = set(task_params["outlets"])
@@ -1102,7 +1106,7 @@ class DagBuilder:
 
     @staticmethod
     def make_decorator(
-        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any)
+        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any), enforce_global_datasets Optiona[bool] = False
     ) -> BaseOperator:
         """
         Takes a decorator and params and creates an instance of that decorator.
@@ -1136,7 +1140,7 @@ class DagBuilder:
         decorator: Callable[..., BaseOperator] = import_string(decorator_import_path)
         task_params.pop("decorator")
 
-        DagBuilder.adjust_general_task_params(task_params)
+        DagBuilder.adjust_general_task_params(task_params, enforce_global_datasets=enforce_global_datasets)
 
         callable_args_keys = inspect.getfullargspec(python_callable).args
         callable_kwargs = {}
