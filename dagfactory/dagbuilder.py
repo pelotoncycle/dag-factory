@@ -1074,9 +1074,7 @@ class DagBuilder:
         has_default_datasets_file = utils.check_dict_key(task_params, "dataset_config_file")            
         if utils.check_dict_key(task_params, "outlets") and version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
             
-            if enforce_global_datasets and has_default_datasets_file and utils.check_dict_key(
-                task_params["outlets"], "datasets"
-            ):
+            if enforce_global_datasets and has_default_datasets_file:
                 file = task_params["dataset_config_file"]
                 datasets_filter = set(task_params["outlets"])
                 datasets_uri_map = utils.get_datasets_map_uri_yaml_file(file, datasets_filter)
