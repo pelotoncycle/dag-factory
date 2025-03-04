@@ -954,6 +954,10 @@ class DagBuilder:
 
                 elif "decorator" in task_conf:
                     params: Dict[str, Any] = {k: v for k, v in task_conf.items() if k not in SYSTEM_PARAMS}
+                    # Dynamic task mapping broken in decorators for airflow <= 2.10
+                    if task_conf.get("expand"):
+                        if version.parse(AIRFLOW_VERSION) <= version.parse("2.10.0"):
+                            raise DagFactoryConfigException("Dynamic task mapping broken in decorators for airflow <= 2.10")
                     task = DagBuilder.make_decorator(
                         decorator_import_path=task_conf["decorator"], 
                         task_params=params, 
@@ -1106,7 +1110,7 @@ class DagBuilder:
 
     @staticmethod
     def make_decorator(
-        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any), enforce_global_datasets: Optiona[bool] = False
+        decorator_import_path: str, task_params: Dict[str, Any], tasks_dict: dict(str, Any), enforce_global_datasets: Optional[bool] = False
     ) -> BaseOperator:
         """
         Takes a decorator and params and creates an instance of that decorator.
