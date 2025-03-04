@@ -277,7 +277,7 @@ class DagFactory:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
                 if isinstance(dag["dag"], DAG):
                     dags[dag["dag_id"]]: DAG = dag["dag"]
-                    dag["dag"].fileloc = self.config_file_path
+                    dag["dag"].fileloc = self.config_filepath
                 elif isinstance(dag["dag"], str):
                     logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
             except Exception as err:
