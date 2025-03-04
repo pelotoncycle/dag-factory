@@ -55,7 +55,6 @@ class DagFactory:
             self.config: Dict[str, Any] = DagFactory._load_config(
                 config_filepath=config_filepath
             )
-            self.config_filepath = config_filepath
             dag_id = list(self.config.keys())[0]
             if 'git/repo' in config_filepath:
                 git_filepath = config_filepath.replace('/git/repo', 'https://github.com/pelotoncycle/data-engineering-airflow-dags/tree/master')
@@ -277,7 +276,6 @@ class DagFactory:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
                 if isinstance(dag["dag"], DAG):
                     dags[dag["dag_id"]]: DAG = dag["dag"]
-                    dag["dag"].fileloc = self.config_filepath
                 elif isinstance(dag["dag"], str):
                     logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
             except Exception as err:
