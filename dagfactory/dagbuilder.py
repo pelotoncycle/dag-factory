@@ -745,7 +745,7 @@ class DagBuilder:
             if enforce_global_datasets:
                 if has_global_datasets_file_attr:
                     file = dag_params.get("dataset_config_file")
-                    datasets: Union[List[str], str] = schedule.get("datasets")
+                    datasets: Union[List[str], str] = schedule.get("datasets") if has_datasets_attr else schedule 
                     datasets_conditions: str = utils.parse_list_datasets(datasets)
                     dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions)
                 else:
