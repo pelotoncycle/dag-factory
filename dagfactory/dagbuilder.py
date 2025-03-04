@@ -457,7 +457,7 @@ class DagBuilder:
                 #     task_params.update(partial_kwargs)
                 # merging partials even if there are duplicates, as it is possible for operator defaults to create duplicate params
                 # and in those cases we want defer to the values in partials and not throw an error
-                # TODO: determine if duplicate params between partials and task_params is something that needs to be voided
+                # TODO: determine if duplicate params between partials and task_params is something that needs to be avoided
                 # if so, create a solution to allow operator defaults to be overridden. Otherwise the following should work.
                 if partial_kwargs:
                     task_params = merge_configs(task_params, partial_kwargs)
