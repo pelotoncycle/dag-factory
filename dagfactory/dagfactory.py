@@ -44,7 +44,7 @@ class DagFactory:
             config_filepath: Optional[str] = None,
             default_config: Optional[dict] = None,
             config: Optional[dict] = None,
-            enforce_global_datasets: Optional[bool] = False
+            enforce_global_datasets: Optional[bool] = True
     ) -> None:
         assert bool(config_filepath) ^ bool(
             config
@@ -327,39 +327,3 @@ class DagFactory:
         for dag_to_remove in dags_to_remove:
             del globals[dag_to_remove]
 
-
-def load_yaml_dags(
-    globals_dict: Dict[str, Any],
-    dags_folder: str = airflow_conf.get("core", "dags_folder"),
-    default_args_config_path: str = airflow_conf.get("core", "dags_folder"),
-    suffix=None,
-):
-    """
-    Loads all the yaml/yml files in the dags folder
-
-    The dags folder is defaulted to the airflow dags folder if unspecified.
-    And the prefix is set to yaml/yml by default. However, it can be
-    interesting to load only a subset by setting a different suffix.
-
-    :param globals_dict: The globals() from the file used to generate DAGs
-    :param dags_folder: Path to the folder you want to get recursively scanned
-    :param default_args_config_path: The Folder path where defaults.yml exist.
-    :param suffix: file suffix to filter `in` what files to scan for dags
-    """
-    # chain all file suffixes in a single iterator
-    logging.info("Loading DAGs from %s", dags_folder)
-    if suffix is None:
-        suffix = [".yaml", ".yml"]
-    candidate_dag_files = []
-    for suf in suffix:
-        candidate_dag_files = list(chain(candidate_dag_files, Path(dags_folder).rglob(f"*{suf}")))
-    for config_file_path in candidate_dag_files:
-        config_file_abs_path = str(config_file_path.absolute())
-        logging.info("Loading %s", config_file_abs_path)
-        try:
-            factory = DagFactory(config_file_abs_path, default_args_config_path=default_args_config_path)
-            factory.generate_dags(globals_dict)
-        except Exception:  # pylint: disable=broad-except
-            logging.exception("Failed to load dag from %s", config_file_path)
-        else:
-            logging.info("DAG loaded: %s", config_file_path)

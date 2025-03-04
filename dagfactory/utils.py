@@ -96,7 +96,7 @@ def merge_configs(
     for key in default_config:
         if key in config and key not in keep_default_values:
             if isinstance(config[key], dict) and isinstance(default_config[key], dict):
-                merge_configs(config[key], default_config[key])
+                merge_configs(config[key], default_config[key], keep_default_values=keep_default_values)
             elif isinstance(config[key], list) and isinstance(default_config[key], list) and key in combine_key_values:
                 combined_list = list(set(config[key]).union(set(default_config[key])))
                 config[key] = combined_list
