@@ -453,8 +453,14 @@ class DagBuilder:
                 (task_params, expand_kwargs, partial_kwargs) = utils.get_expand_partial_kwargs(task_params)
 
                 # If there are partial_kwargs we should merge them with existing task_params
-                if partial_kwargs and not utils.is_partial_duplicated(partial_kwargs, task_params):
-                    task_params.update(partial_kwargs)
+                # if partial_kwargs and not utils.is_partial_duplicated(partial_kwargs, task_params):
+                #     task_params.update(partial_kwargs)
+                # merging partials even if there are duplicates, as it is possible for operator defaults to create duplicate params
+                # and in those cases we want defer to the values in partials and not throw an error
+                # TODO: determine if duplicate params between partials and task_params is something that needs to be voided
+                # if so, create a solution to allow operator defaults to be overridden. Otherwise the following should work.
+                if partial_kwargs:
+                    task_params = merge_configs(task_params, partial_kwargs)
 
             task: Union[BaseOperator, MappedOperator] = (
                 operator_obj(**task_params)
@@ -738,7 +744,7 @@ class DagBuilder:
         has_schedule_interval_attr = utils.check_dict_key(dag_params, "schedule_interval")
 
         if has_schedule_attr and not has_schedule_interval_attr and is_airflow_version_at_least_2_4:
-            schedule: Dict[str, Any] = dag_params.get("schedule")
+            schedule: Union[str | Dict[str, Any]] = dag_params.get("schedule")
             has_global_datasets_file_attr = utils.check_dict_key(dag_params, "dataset_config_file")
             has_file_attr = utils.check_dict_key(schedule, "file")
             has_datasets_attr = utils.check_dict_key(schedule, "datasets")
