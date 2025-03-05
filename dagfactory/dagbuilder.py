@@ -113,8 +113,16 @@ else:
 
 if version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
     from airflow.datasets import Dataset
+
 else:
     Dataset = None
+
+if version.parse(AIRFLOW_VERSION) >= version.parse("2.9.0"):
+    from airflow.timetables import DatasetOrTimeSchedule
+    from airflow.timetables import CronTriggerTimetable
+else:
+    DatasetOrTimeSchedule = None
+    CronTriggerTimetable
 
 
 # these are params only used in the DAG factory, not in the tasks
