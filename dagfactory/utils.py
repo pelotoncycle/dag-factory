@@ -339,3 +339,10 @@ def validate_uri(uri: str) -> bool:
             raise DagFactoryConfigException(f"Invalid redshift uri: {uri} must be of format redshift://cluster.db.schema.table")
     return True
     
+
+def validate_timezone(timezone: str) -> bool:
+    try:
+        pendulum.timezone(timezone)
+    except Exception as e:
+        raise DagFactoryConfigException(f"Invalid timezone: {timezone}. Parsing failed with error: {e}")
+    return True

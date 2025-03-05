@@ -113,8 +113,16 @@ else:
 
 if version.parse(AIRFLOW_VERSION) >= version.parse("2.4.0"):
     from airflow.datasets import Dataset
+
 else:
     Dataset = None
+
+if version.parse(AIRFLOW_VERSION) >= version.parse("2.9.0"):
+    from airflow.timetables.datasets import DatasetOrTimeSchedule
+    from airflow.timetables.trigger import CronTriggerTimetable
+else:
+    DatasetOrTimeSchedule = None
+    CronTriggerTimetable = None
 
 
 # these are params only used in the DAG factory, not in the tasks
@@ -742,18 +750,23 @@ class DagBuilder:
         is_airflow_version_at_least_2_9 = version.parse(AIRFLOW_VERSION) >= version.parse("2.9.0")
         has_schedule_attr = utils.check_dict_key(dag_params, "schedule")
         has_schedule_interval_attr = utils.check_dict_key(dag_params, "schedule_interval")
-
+        has_timetable = has_schedule_attr and utils.check_dict_key(dag_params["schedule"], "cron")
         if has_schedule_attr and not has_schedule_interval_attr and is_airflow_version_at_least_2_4:
             schedule: Union[str | Dict[str, Any]] = dag_params.get("schedule")
             has_global_datasets_file_attr = utils.check_dict_key(dag_params, "dataset_config_file")
             has_file_attr = utils.check_dict_key(schedule, "file")
             has_datasets_attr = utils.check_dict_key(schedule, "datasets")
+            if has_timetable:
+                cron = dag_params["schedule"]["cron"]
+                timezone = dag_params["schedule"].get("timezone", "America/New_York")
+                utils.validate_timezone(timezone)
+                timetable = CronTriggerTimetable(cron, timezone=timezone)
             if enforce_global_datasets:
                 if has_global_datasets_file_attr:
                     file = dag_params.get("dataset_config_file")
                     datasets: Union[List[str], str] = schedule.get("datasets") if has_datasets_attr else schedule 
                     datasets_conditions: str = utils.parse_list_datasets(datasets)
-                    dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions)
+                    dataset_schedule = DagBuilder.process_file_with_datasets(file, datasets_conditions)
                 else:
                     raise DagFactoryConfigException("Datasets must be declared in the root datasets.yml file")
             elif has_file_attr and has_datasets_attr:
@@ -761,15 +774,20 @@ class DagBuilder:
                 datasets: Union[List[str], str] = schedule.get("datasets")
                 datasets_conditions: str = utils.parse_list_datasets(datasets)
                 default_dataset_file = dag_params.get("dataset_config_file") if has_global_datasets_file_attr else None
-                dag_kwargs["schedule"] = DagBuilder.process_file_with_datasets(file, datasets_conditions, default_dataset_file=default_dataset_file)
+                dataset_schedule = DagBuilder.process_file_with_datasets(file, datasets_conditions, default_dataset_file=default_dataset_file)
 
             elif has_datasets_attr and is_airflow_version_at_least_2_9:
                 datasets = schedule["datasets"]
                 datasets_conditions: str = utils.parse_list_datasets(datasets)
-                dag_kwargs["schedule"] = DagBuilder.evaluate_condition_with_datasets(datasets_conditions)
+                dataset_schedule = DagBuilder.evaluate_condition_with_datasets(datasets_conditions)
 
             else:
-                dag_kwargs["schedule"] = [Dataset(uri) for uri in schedule]
+                dataset_schedule = [Dataset(uri) for uri in schedule]
+
+            if has_timetable:
+                dag_kwargs["schedule"] = DatasetOrTimeSchedule(timetable=timetable, datasets=dataset_schedule)
+            else:
+                dag_kwargs["schedule"] = dataset_schedule
 
             if has_file_attr:
                 schedule.pop("file")
