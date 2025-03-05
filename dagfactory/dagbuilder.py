@@ -118,8 +118,8 @@ else:
     Dataset = None
 
 if version.parse(AIRFLOW_VERSION) >= version.parse("2.9.0"):
-    from airflow.timetables import DatasetOrTimeSchedule
-    from airflow.timetables import CronTriggerTimetable
+    from airflow.timetables.datasets import DatasetOrTimeSchedule
+    from airflow.timetables.trigger import CronTriggerTimetable
 else:
     DatasetOrTimeSchedule = None
     CronTriggerTimetable

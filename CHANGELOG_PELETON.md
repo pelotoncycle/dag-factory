@@ -1,7 +1,11 @@
 # Peloton Changelog
 All notable changes made by Peloton org will be documented in this file.
 
-## [0.18.0.post0] - 2025-03-04
+## [0.18.1] - 2024-03-05
+- added support for DatasetOrTimeSchedule
+- Timetable support for CronTriggerTimetable only as part of a DatasetOrTimeSchedule
+
+## [0.18.0] - 2025-03-04
 ### Changed
 - Merged v 0.22 from upstream Dag-factory repo. See CHANGELOG.md for full list of changes
 - Notable updates from upstream:
