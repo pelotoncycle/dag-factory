@@ -759,7 +759,7 @@ class DagBuilder:
             if has_timetable:
                 cron = dag_params["schedule"]["cron"]
                 timezone = dag_params["schedule"].get("timezone", "America/New_York")
-                utils.validate(timezone)
+                utils.validate_timezone(timezone)
                 timetable = CronTriggerTimetable(cron, timezone=timezone)
             if enforce_global_datasets:
                 if has_global_datasets_file_attr:
