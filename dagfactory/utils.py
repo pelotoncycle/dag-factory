@@ -342,7 +342,7 @@ def validate_uri(uri: str) -> bool:
 
 def validate_timezone(timezone: str) -> bool:
     try:
-        pendulum.tz.timezone(str)
+        pendulum.timezone(str)
     except Exception as e:
         raise DagFactoryConfigException(f"Invalid timezone: {timezone}. Parsing failed with error: {e}")
     return True
