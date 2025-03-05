@@ -15,7 +15,7 @@ from airflow.models import DAG
 from airflow.operators.dummy import DummyOperator
 
 from dagfactory.dagbuilder import DagBuilder
-
+from dagfactory.exceptions import DagFactoryConfigException, DagFactoryException
 
 # these are params that cannot be a dag name
 from dagfactory.utils import merge_configs
@@ -43,7 +43,8 @@ class DagFactory:
             self,
             config_filepath: Optional[str] = None,
             default_config: Optional[dict] = None,
-            config: Optional[dict] = None
+            config: Optional[dict] = None,
+            enforce_global_datasets: Optional[bool] = True
     ) -> None:
         assert bool(config_filepath) ^ bool(
             config
@@ -72,9 +73,12 @@ class DagFactory:
                 self.config[dag_id]['doc_md'] = file_loc
         if config:
             self.config: Dict[str, Any] = config
+        self.enforce_global_datasets: bool = enforce_global_datasets
+
+
 
     @classmethod
-    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None):
+    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None, root_level: Optional[bool] = True):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
         """
@@ -85,8 +89,12 @@ class DagFactory:
         allowed_default_filename = ['default.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
         maybe_default_file = [sub for sub in subs if sub in allowed_default_filename]
 
+        # get root level datasets config if exist
+        allowed_datasets_filename = ['datasets.' + sfx for sfx in ALLOWED_CONFIG_FILE_SUFFIX]
+        maybe_datasets_file = [sub for sub in subs if sub in allowed_datasets_filename]
+
         # get the configurations that are not default
-        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if sub not in maybe_default_file]
+        subs_fpath = [os.path.join(config_dir, sub) for sub in subs if (sub not in maybe_default_file) and (sub not in maybe_datasets_file)]
 
         # if there is no default.yaml in current sub folder, use the defaults from the parent folder
         # if there is, merge the defaults
@@ -99,14 +107,21 @@ class DagFactory:
                 cls._load_config(
                     config_filepath=default_fpath
                 ),
-                default_config
+                default_config,
+                keep_default_values=["dataset_config_file"]
             )
 
+        # set root datasets file in config
+        if root_level and len(maybe_datasets_file) > 0:
+            datasets_file = maybe_datasets_file[0]
+            datasets_file = os.path.join(config_dir, datasets_file)
+            default_config["dataset_config_file"] = datasets_file
+            
         # load dags from each yaml configuration files
         import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config)
+                cls.from_directory(sub_fpath, globals, default_config, root_level=False)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if 'git/repo/dags/' in sub_fpath:
                     if sub_fpath.split("/")[-1].startswith("_jc__"):
@@ -121,7 +136,7 @@ class DagFactory:
                 try:
                     logger.info(f"Reading dag config file: {sub_fpath}")
                     logger.info(f"Generate dag: {default_config}")
-                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config)
+                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True)
                     dag_factory.generate_dags(globals)
                 except Exception as e:
                     logger.info(f"Invalid dag config: {import_failures}")
@@ -162,12 +177,33 @@ class DagFactory:
             globals[alert_dag_id] = alert_dag
 
     @staticmethod
+    def _serialise_config_md(dag_name, dag_config, default_config):
+        # Remove empty task_groups if it exists
+        # We inject it if not supply by user
+        # https://github.com/astronomer/dag-factory/blob/e53b456d25917b746d28eecd1e896595ae0ee62b/dagfactory/dagfactory.py#L102
+        if dag_config.get("task_groups") == {}:
+            del dag_config["task_groups"]
+
+        # Convert default_config to YAML format
+        default_config = {"default": default_config}
+        default_config_yaml = yaml.dump(default_config, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        # Convert dag_config to YAML format
+        dag_config = {dag_name: dag_config}
+        dag_config_yaml = yaml.dump(dag_config, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        # Combine the two YAML outputs with appropriate formatting
+        dag_yml = default_config_yaml + "\n" + dag_config_yaml
+
+        return dag_yml
+
+    @staticmethod
     def _validate_config_filepath(config_filepath: str) -> None:
         """
         Validates config file path is absolute
         """
         if not os.path.isabs(config_filepath):
-            raise Exception("DAG Factory `config_filepath` must be absolute path")
+            raise DagFactoryConfigException("DAG Factory `config_filepath` must be absolute path")
 
     @staticmethod
     def _load_config(config_filepath: str) -> Dict[str, Any]:
@@ -183,14 +219,23 @@ class DagFactory:
                 seq = loader.construct_sequence(node)
                 return "".join([str(i) for i in seq])
 
-            yaml.add_constructor("!join", __join, yaml.FullLoader)
+            def __or(loader: yaml.FullLoader, node: yaml.Node) -> str:
+                seq = loader.construct_sequence(node)
+                return " | ".join([f"({str(i)})" for i in seq])
 
-            config: Dict[str, Any] = yaml.load(
-                stream=open(config_filepath, "r", encoding="utf-8"),
-                Loader=yaml.FullLoader,
-            )
+            def __and(loader: yaml.FullLoader, node: yaml.Node) -> str:
+                seq = loader.construct_sequence(node)
+                return " & ".join([f"({str(i)})" for i in seq])
+
+            yaml.add_constructor("!join", __join, yaml.FullLoader)
+            yaml.add_constructor("!or", __or, yaml.FullLoader)
+            yaml.add_constructor("!and", __and, yaml.FullLoader)
+
+            with open(config_filepath, "r", encoding="utf-8") as fp:
+                config_with_env = os.path.expandvars(fp.read())
+                config: Dict[str, Any] = yaml.load(stream=config_with_env, Loader=yaml.FullLoader)
         except Exception as err:
-            raise Exception("Invalid DAG Factory config file") from err
+            raise DagFactoryConfigException("Invalid DAG Factory config file") from err
         return config
 
     def get_dag_configs(self) -> Dict[str, Dict[str, Any]]:
@@ -199,11 +244,7 @@ class DagFactory:
 
         :returns: dict with configuration for dags
         """
-        return {
-            dag: self.config[dag]
-            for dag in self.config.keys()
-            if dag not in SYSTEM_PARAMS
-        }
+        return {dag: self.config[dag] for dag in self.config.keys() if dag not in SYSTEM_PARAMS}
 
     def get_default_config(self) -> Dict[str, Any]:
         """
@@ -228,6 +269,8 @@ class DagFactory:
                 dag_name=dag_name,
                 dag_config=dag_config,
                 default_config=default_config,
+                yml_dag=self._serialise_config_md(dag_name, dag_config, default_config),
+                enforce_global_datasets=self.enforce_global_datasets
             )
             try:
                 dag: Dict[str, Union[str, DAG]] = dag_builder.build()
@@ -236,9 +279,7 @@ class DagFactory:
                 elif isinstance(dag["dag"], str):
                     logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
             except Exception as err:
-                raise Exception(
-                    f"Failed to generate dag {dag_name}. verify config is correct"
-                ) from err
+                raise Exception(f"Failed to generate dag {dag_name}. verify config is correct") from err
 
         return dags
 
@@ -286,36 +327,3 @@ class DagFactory:
         for dag_to_remove in dags_to_remove:
             del globals[dag_to_remove]
 
-    # pylint: enable=redefined-builtin
-
-
-def load_yaml_dags(
-    globals_dict: Dict[str, Any],
-    dags_folder: str = airflow_conf.get("core", "dags_folder"),
-    suffix=None,
-):
-    """
-    Loads all the yaml/yml files in the dags folder
-
-    The dags folder is defaulted to the airflow dags folder if unspecified.
-    And the prefix is set to yaml/yml by default. However, it can be
-    interesting to load only a subset by setting a different suffix.
-
-    :param globals_dict: The globals() from the file used to generate DAGs
-    :dags_folder: Path to the folder you want to get recursively scanned
-    :suffix: file suffix to filter `in` what files to scan for dags
-    """
-    # chain all file suffixes in a single iterator
-    logging.info("Loading DAGs from %s", dags_folder)
-    if suffix is None:
-        suffix = [".yaml", ".yml"]
-    candidate_dag_files = []
-    for suf in suffix:
-        candidate_dag_files = chain(
-            candidate_dag_files, Path(dags_folder).rglob(f"*{suf}")
-        )
-
-    for config_file_path in candidate_dag_files:
-        config_file_abs_path = str(config_file_path.absolute())
-        DagFactory(config_file_abs_path).generate_dags(globals_dict)
-        logging.info("DAG loaded: %s", config_file_path)
