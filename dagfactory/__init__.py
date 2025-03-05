@@ -1,9 +1,8 @@
 """Modules and methods to export for easier access"""
 
-from .dagfactory import DagFactory, load_yaml_dags
+from .dagfactory import DagFactory
 
-__version__ = "0.22.0"
+__version__ = "0.18.0"
 __all__ = [
-    "DagFactory",
-    "load_yaml_dags",
+    "DagFactory"
 ]
