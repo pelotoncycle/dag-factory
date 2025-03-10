@@ -140,11 +140,12 @@ class DagBuilder:
     """
 
     def __init__(
-        self, dag_name: str, dag_config: Dict[str, Any], default_config: Dict[str, Any], yml_dag: str = "", enforce_global_datasets: bool = True
+        self, dag_name: str, dag_config: Dict[str, Any], default_config: Dict[str, Any], config_filepath: str, yml_dag: str = "", enforce_global_datasets: bool = True
     ) -> None:
         self.dag_name: str = dag_name
         self.dag_config: Dict[str, Any] = deepcopy(dag_config)
         self.default_config: Dict[str, Any] = deepcopy(default_config)
+        self.config_filepath = config_filepath
         self._yml_dag = yml_dag
         self.enforce_global_datasets: bool = enforce_global_datasets
 
@@ -904,6 +905,7 @@ class DagBuilder:
             operator_defaults = dag_params["operator_defaults"]
 
         with dag_class(**dag_kwargs) as dag:
+            dag.fileloc = self.config_filepath
             if dag_params.get("doc_md_file_path"):
                 if not os.path.isabs(dag_params.get("doc_md_file_path")):
                     raise Exception("`doc_md_file_path` must be absolute path")
