@@ -905,7 +905,7 @@ class DagBuilder:
             operator_defaults = dag_params["operator_defaults"]
 
         with dag_class(**dag_kwargs) as dag:
-            dag.fileloc = self.config_filepath
+            dag.full_filepath(self.config_filepath)
             if dag_params.get("doc_md_file_path"):
                 if not os.path.isabs(dag_params.get("doc_md_file_path")):
                     raise Exception("`doc_md_file_path` must be absolute path")
