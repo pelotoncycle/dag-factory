@@ -271,7 +271,7 @@ class DagFactory:
                 dag_config=dag_config,
                 default_config=default_config,
                 yml_dag=self._serialise_config_md(dag_name, dag_config, default_config),
-                config_file_path=self.config_filepath,
+                config_filepath=self.config_filepath,
                 enforce_global_datasets=self.enforce_global_datasets
             )
             try:
