@@ -899,13 +899,13 @@ class DagBuilder:
             dag_kwargs["wait_on_tasks"] = dag_params.get("wait_on_tasks", None)
             dag_kwargs["alert_on_start"] = dag_params.get("alert_on_start", None)
             dag_kwargs["alert_on_finish"] = dag_params.get("alert_on_finish", None)
+            dag_kwargs["fileloc"] = self.config_filepath
 
         operator_defaults: Optional[Dict] = None
         if utils.check_dict_key(dag_params, "operator_defaults"):
             operator_defaults = dag_params["operator_defaults"]
 
         with dag_class(**dag_kwargs) as dag:
-            dag.full_filepath(self.config_filepath)
             if dag_params.get("doc_md_file_path"):
                 if not os.path.isabs(dag_params.get("doc_md_file_path")):
                     raise Exception("`doc_md_file_path` must be absolute path")
