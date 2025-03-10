@@ -905,6 +905,8 @@ class DagBuilder:
         if utils.check_dict_key(dag_params, "operator_defaults"):
             operator_defaults = dag_params["operator_defaults"]
 
+        dag_kwargs["auto_register"] = False
+
         with dag_class(**dag_kwargs) as dag:
             if dag_params.get("doc_md_file_path"):
                 if not os.path.isabs(dag_params.get("doc_md_file_path")):
