@@ -999,7 +999,7 @@ class DagBuilder:
             # set task dependencies after creating tasks
             self.set_dependencies(tasks, tasks_dict, dag_params.get("task_groups", {}), task_groups_dict)
 
-        return {"dag_id": dag_params["dag_id"], "dag": dag}
+            return {"dag_id": dag_params["dag_id"], "dag": dag}
 
     @staticmethod
     def topological_sort_tasks(tasks_configs: dict[str, Any]) -> list[tuple(str, Any)]:
