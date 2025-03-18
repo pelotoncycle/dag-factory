@@ -164,7 +164,7 @@ class DagFactory:
             dag_failure_map = [
                 json.dumps(
                     {
-                        "config location": loc, 
+                        "config_location": loc, 
                         "error_message": error[0], 
                         "dag_id": error[1], 
                         "tags": error[2]
@@ -182,7 +182,7 @@ class DagFactory:
                     )
                 },
                 tags=[f"dag_factory_import_errors"],
-                doc_json=import_failures_reformatted
+                description=import_failures_reformatted
             ) as alert_dag:
                 DummyOperator.partial(
                     task_id='import_error_messenger',
