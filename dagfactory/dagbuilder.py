@@ -938,7 +938,8 @@ class DagBuilder:
                 if "dagfactory" not in tags:
                     tags.append("dagfactory")
                 dag.tags = tags
-            dag.dag_factory_file_location = self.dag_config_location
+            #dag.dag_factory_file_location = self.dag_config_location
+            dag.tags.append(f"fileloc:{self.dag_config_location}")
             # add a property to mark this dag as an auto-generated on
             dag.is_dagfactory_auto_generated = True
 
