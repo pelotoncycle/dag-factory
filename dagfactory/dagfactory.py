@@ -180,9 +180,12 @@ class DagFactory:
                         2020, 1, 1, tzinfo=pendulum.timezone("America/New_York")
                     )
                 },
-                tags=[f"dag_factory_import_errors"],
-                description=import_failures_reformatted
+                tags=[f"dag_factory_import_errors"]
             ) as alert_dag:
+                full_errors = DummyOperator(
+                    task_id='import_error_messenger',
+                    doc_json=import_failures_reformatted
+                )
                 for dag_id, msg in dag_failure_map.items():
                     error_message = msg["error_message"]
                     del msg["error_message"]
