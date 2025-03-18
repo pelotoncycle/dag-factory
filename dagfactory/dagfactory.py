@@ -161,7 +161,7 @@ class DagFactory:
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
-            dag_failure_map = [json.dumps(
+            dag_failure_map = {error[1]: json.dumps(
                 
                     {
                         "config_location": loc, 
@@ -171,7 +171,7 @@ class DagFactory:
                         }
                     
                     
-                    ) for loc, error in import_failures.items() ]
+                    ) for loc, error in import_failures.items() }
                 
             with DAG(
                 dag_id=alert_dag_id,
@@ -185,10 +185,13 @@ class DagFactory:
                 tags=[f"dag_factory_import_errors"],
                 description=import_failures_reformatted
             ) as alert_dag:
-                DummyOperator.partial(
-                    task_id='import_error_messenger'
-                ).expand(doc_json=dag_failure_map)
-            globals[alert_dag_id] = alert_dag
+                for dag_id, msg in dag_failure_map.items():
+                    DummyOperator(
+                        dag=alert_dag,
+                        task_id=f'import_error_messenger_{dag_id}',
+                        doc_json=msg
+                    )
+                globals[alert_dag_id] = alert_dag
 
     @staticmethod
     def _serialise_config_md(dag_name, dag_config, default_config):
