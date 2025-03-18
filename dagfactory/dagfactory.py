@@ -173,7 +173,6 @@ class DagFactory:
                     
                     ) for loc, error in import_failures.items() ]
                 
-            raise Exception('\n'.join(dag_failure_map))
             with DAG(
                 dag_id=alert_dag_id,
                 schedule_interval="@once",
