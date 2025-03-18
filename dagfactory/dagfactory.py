@@ -52,6 +52,7 @@ class DagFactory:
         self.default_config = default_config
         if config_filepath:
             DagFactory._validate_config_filepath(config_filepath=config_filepath)
+            self.config_filepath = config_filepath
             self.config: Dict[str, Any] = DagFactory._load_config(
                 config_filepath=config_filepath
             )
@@ -269,6 +270,7 @@ class DagFactory:
                 dag_name=dag_name,
                 dag_config=dag_config,
                 default_config=default_config,
+                dag_config_location=self.config_filepath,
                 yml_dag=self._serialise_config_md(dag_name, dag_config, default_config),
                 enforce_global_datasets=self.enforce_global_datasets
             )
