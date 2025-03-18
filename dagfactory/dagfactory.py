@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import pendulum
 import yaml
+import json
 from airflow.configuration import conf as airflow_conf
 from airflow.models import DAG
 from airflow.operators.dummy import DummyOperator
@@ -138,27 +139,39 @@ class DagFactory:
                     logger.info(f"Generate dag: {default_config}")
                     dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True)
                     dag_factory.generate_dags(globals)
-                except Exception as e:
+                except DagFactoryConfigException as e:
                     logger.info(f"Invalid dag config: {import_failures}")
                     logger.info(f"Import error message: {str(e)}")
                     if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
-                        import_failures[sub_fpath] = traceback.format_exc(
-                            limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH
-                        )
+                        import_failures[sub_fpath] = (traceback.format_exc(
+                            limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH)
+                        , e.dag_id, e.tags)
                     else:
-                        import_failures[sub_fpath] = str(e)
+                        import_failures[sub_fpath] = (str(e), e.dag_id, e.tags)
 
 
         # in the end we want to surface the error messages if there's any
         if import_failures:
             # reformat import_failures so they are reader friendly
             import_failures_reformatted = ''
-            for import_loc, import_trc in import_failures.items():
+            for import_loc, import_info in import_failures.items():
+                import_trc = import_info[0]
                 import_failures_reformatted += '\n' + f'Failed to generate dag from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
-
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
+            
+            dag_failure_map = [
+                json.dumps(
+                    {
+                        "config location": loc, 
+                        "error_message": error[0], 
+                        "dag_id": error[1], 
+                        "tags": error[2]
+                        }
+                    ) for loc, error in import_failures.items()
+                ]
+
             with DAG(
                 dag_id=alert_dag_id,
                 schedule_interval="@once",
@@ -168,12 +181,12 @@ class DagFactory:
                         2020, 1, 1, tzinfo=pendulum.timezone("America/New_York")
                     )
                 },
-                tags=[f"dag_factory_import_errors"]
+                tags=[f"dag_factory_import_errors"],
+                doc_json=import_failures_reformatted
             ) as alert_dag:
-                DummyOperator(
+                DummyOperator.partial(
                     task_id='import_error_messenger',
-                    doc_json=import_failures_reformatted
-                )
+                ).expand(doc_json=dag_failure_map)
             globals[alert_dag_id] = alert_dag
 
     @staticmethod
@@ -279,7 +292,8 @@ class DagFactory:
                 elif isinstance(dag["dag"], str):
                     logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
             except Exception as err:
-                raise Exception(f"Failed to generate dag {dag_name}. verify config is correct") from err
+                tags = dag_config.get(tags, [])
+                raise DagFactoryConfigException(f"Failed to generate dag {dag_name}. verify config is correct", dag_id=dag_name, tags=tags) from err
 
         return dags
 
