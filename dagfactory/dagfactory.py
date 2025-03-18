@@ -165,12 +165,10 @@ class DagFactory:
                 
                     {
                         "config_location": loc, 
-                        "error_message": error[0], 
+                        "error_message": error[0].replace('\n', '\\n'), 
                         "dag_id": error[1], 
                         "tags": error[2]
                         }
-                    
-                    
                     ) for loc, error in import_failures.items() }
                 
             with DAG(
