@@ -161,16 +161,18 @@ class DagFactory:
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
-            dag_failure_map = [
-                json.dumps(
+            dag_failure_map = json.dumps(
+                [
                     {
                         "config_location": loc, 
                         "error_message": error[0], 
                         "dag_id": error[1], 
                         "tags": error[2]
                         }
-                    ) for loc, error in import_failures.items()
-                ]
+                    for loc, error in import_failures.items()
+                    ]
+                    )
+                
 
             with DAG(
                 dag_id=alert_dag_id,
