@@ -161,7 +161,7 @@ class DagFactory:
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
-            dag_failure_map = {error[1]: json.dumps(
+            dag_failure_map = {error[1]: 
                 
                     {
                         "config_location": loc, 
@@ -169,7 +169,7 @@ class DagFactory:
                         "dag_id": error[1], 
                         "tags": error[2]
                         }
-                    ) for loc, error in import_failures.items() }
+                     for loc, error in import_failures.items() }
                 
             with DAG(
                 dag_id=alert_dag_id,
@@ -184,10 +184,13 @@ class DagFactory:
                 description=import_failures_reformatted
             ) as alert_dag:
                 for dag_id, msg in dag_failure_map.items():
+                    error_message = msg["error_message"]
+                    del msg["error_message"]
                     DummyOperator(
                         dag=alert_dag,
                         task_id=f'import_error_messenger_{dag_id}',
-                        doc_json=msg
+                        doc_json=json.dumps(msg),
+                        doc=error_message
                     )
                 globals[alert_dag_id] = alert_dag
 
