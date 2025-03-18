@@ -292,7 +292,7 @@ class DagFactory:
                 elif isinstance(dag["dag"], str):
                     logger.info(f"dag {dag['dag_id']} was not imported. reason: {dag['dag']}")
             except Exception as err:
-                tags = dag_config.get(tags, [])
+                tags = dag_config.get("tags", [])
                 raise DagFactoryConfigException(f"Failed to generate dag {dag_name}. verify config is correct", dag_id=dag_name, tags=tags) from err
 
         return dags
