@@ -186,7 +186,7 @@ class DagFactory:
                 description=import_failures_reformatted
             ) as alert_dag:
                 DummyOperator.partial(
-                    task_id='import_error_messenger',
+                    task_id='import_error_messenger'
                 ).expand(doc_json=dag_failure_map)
             globals[alert_dag_id] = alert_dag
 
