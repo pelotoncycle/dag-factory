@@ -119,7 +119,8 @@ class DagFactory:
             default_config["dataset_config_file"] = datasets_file
             
         # load dags from each yaml configuration files
-        import_failures = {}
+        dag_import_failures = {}
+        general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
                 cls.from_directory(sub_fpath, globals, default_config, root_level=False)
@@ -139,22 +140,33 @@ class DagFactory:
                     logger.info(f"Generate dag: {default_config}")
                     dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True)
                     dag_factory.generate_dags(globals)
-                except DagFactoryConfigException as e:
-                    logger.info(f"Invalid dag config: {import_failures}")
-                    logger.info(f"Import error message: {str(e)}")
-                    if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
-                        import_failures[sub_fpath] = (traceback.format_exc(
-                            limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH)
-                        , e.dag_id, e.tags)
+                except Exception as e:
+                    if isinstance(e, DagFactoryConfigException):    
+                        logger.info(f"Invalid dag config: {dag_import_failures}")
+                        logger.info(f"Import error message: {str(e)}")
+                        if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
+                            dag_import_failures[sub_fpath] = (traceback.format_exc(
+                                limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH)
+                            , e.dag_id, e.tags)
+                        else:
+                            dag_import_failures[sub_fpath] = (str(e), e.dag_id, e.tags)
                     else:
-                        import_failures[sub_fpath] = (str(e), e.dag_id, e.tags)
-
+                        logger.info(f"Import error message: {str(e)}")
+                        if cls.DAGBAG_IMPORT_ERROR_TRACEBACKS:
+                            general_import_failures[sub_fpath] = traceback.format_exc(
+                                limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH)
+                        else:
+                            general_import_failures[sub_fpath] = str(e)
 
         # in the end we want to surface the error messages if there's any
-        if import_failures:
+        if dag_import_failures or general_import_failures:
             # reformat import_failures so they are reader friendly
-            import_failures_reformatted = ''
-            for import_loc, import_info in import_failures.items():
+            import_failures_reformatted = 'general import errors:\n'
+            for import_loc, import_trc in general_import_failures.items():
+                import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
+                                               '-'*100 + '\n' + import_trc + '\n'
+            import_failures_reformatted = 'dag import errors:\n'
+            for import_loc, import_info in dag_import_failures.items():
                 import_trc = import_info[0]
                 dag_id = import_info[1]
                 import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
