@@ -165,7 +165,7 @@ class DagFactory:
             for import_loc, import_trc in general_import_failures.items():
                 import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
-            import_failures_reformatted = 'dag import errors:\n'
+            import_failures_reformatted += 'dag import errors:\n'
             for import_loc, import_info in dag_import_failures.items():
                 import_trc = import_info[0]
                 dag_id = import_info[1]
