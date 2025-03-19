@@ -182,7 +182,7 @@ class DagFactory:
                         "dag_id": dag_id, 
                         "tags": tags
                         }
-                     for loc, (trace, dag_id, tags) in import_failures.items() }
+                     for loc, (trace, dag_id, tags) in dag_import_failures.items() }
                 
             with DAG(
                 dag_id=alert_dag_id,
