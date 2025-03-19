@@ -194,7 +194,7 @@ class DagFactory:
                         dag=alert_dag,
                         task_id=f'import_error_messenger_{dag_id}',
                         doc_json=json.dumps(msg),
-                        doc=error_message.replace('/n', '//n')
+                        doc=error_message
                     )
                 globals[alert_dag_id] = alert_dag
 
