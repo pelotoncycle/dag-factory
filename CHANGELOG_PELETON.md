@@ -1,5 +1,7 @@
 # Peloton Changelog
 All notable changes made by Peloton org will be documented in this file.
+## [0.18.2] - 2024-03-19
+- updated from directory error handling to pass each failed dag as a seperate task
 
 ## [0.18.1] - 2024-03-05
 - added support for DatasetOrTimeSchedule
