@@ -156,20 +156,21 @@ class DagFactory:
             import_failures_reformatted = ''
             for import_loc, import_info in import_failures.items():
                 import_trc = import_info[0]
-                import_failures_reformatted += '\n' + f'Failed to generate dag from {import_loc}' + \
+                dag_id = import_info[1]
+                import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
-            dag_failure_map = {error[1]: 
+            dag_failure_map = {dag_id: 
                 
                     {
                         "config_location": loc, 
-                        "error_message": error[0].replace('\n', '\\n'), 
-                        "dag_id": error[1], 
-                        "tags": error[2]
+                        "error_message": trace, 
+                        "dag_id": dag_id, 
+                        "tags": tags
                         }
-                     for loc, error in import_failures.items() }
+                     for loc, (trace, dag_id, tags) in import_failures.items() }
                 
             with DAG(
                 dag_id=alert_dag_id,
