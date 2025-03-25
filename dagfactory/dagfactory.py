@@ -131,9 +131,6 @@ class DagFactory:
                         default_config['default_args']['owner'] = owner
                         if owner == 'data_engineering':
                             default_config['tags'] = sub_fpath.split("/")[5:7]
-                            if sub_fpath.split("/")[5] in ('etl', 'reverse_etl') and not any(
-                        tag.startswith("criticality:tier") for tag in default_config["tags"]):
-                                default_config["tags"].append("criticality:tier2")
                     else:
                         logger.info(f"Ignored invalid dag config file: {sub_fpath} ")
                         continue
@@ -220,6 +217,10 @@ class DagFactory:
         # https://github.com/astronomer/dag-factory/blob/e53b456d25917b746d28eecd1e896595ae0ee62b/dagfactory/dagfactory.py#L102
         if dag_config.get("task_groups") == {}:
             del dag_config["task_groups"]
+
+        if any(tag in ('etl', 'reverse_etl') for tag in default_config["tags"]) and not any(
+                    tag.startswith("criticality:tier") for tag in dag_config["tags"]):
+                default_config["tags"].append("criticality:tier2")
 
         # Convert default_config to YAML format
         default_config = {"default": default_config}
