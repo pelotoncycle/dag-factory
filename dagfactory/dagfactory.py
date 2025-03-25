@@ -166,7 +166,7 @@ class DagFactory:
             # reformat import_failures so they are reader friendly
             import_failures_reformatted = 'general import errors:\n'
             for import_loc, import_trc in general_import_failures.items():
-                import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
+                import_failures_reformatted += '\n' + f'Failure when generating dag from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
             import_failures_reformatted += 'dag import errors:\n'
             for import_loc, import_info in dag_import_failures.items():
