@@ -218,8 +218,8 @@ class DagFactory:
         if dag_config.get("task_groups") == {}:
             del dag_config["task_groups"]
 
-        if any(tag in ('etl', 'reverse_etl') for tag in default_config["tags"]) and not any(
-                    tag.startswith("criticality:tier") for tag in dag_config["tags"]):
+        if any(tag in ('etl', 'reverse_etl') for tag in default_config.get("tags", [])) and not any(
+                    tag.startswith("criticality:tier") for tag in dag_config.get("tags",[])):
                 default_config["tags"].append("criticality:tier2")
 
         # Convert default_config to YAML format
