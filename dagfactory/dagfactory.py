@@ -132,7 +132,7 @@ class DagFactory:
                         if owner == 'data_engineering':
                             default_config['tags'] = sub_fpath.split("/")[5:7]
                             if sub_fpath.split("/")[5] in ('etl', 'reverse_etl') and not any(
-                        tag.startswith("criticality:tier") for tag in default_config['default_args']["tags"]):
+                        tag.startswith("criticality:tier") for tag in default_config["tags"]):
                                 default_config["tags"].append("criticality:tier2")
                     else:
                         logger.info(f"Ignored invalid dag config file: {sub_fpath} ")
