@@ -6,7 +6,7 @@ import re
 import os
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Set, List, Optional, Union
 
 import pendulum
 import yaml
@@ -79,7 +79,14 @@ class DagFactory:
 
 
     @classmethod
-    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None, root_level: Optional[bool] = True):
+    def from_directory(
+        cls, 
+        config_dir, 
+        globals: Dict[str, Any], 
+        parent_default_config: Optional[Dict[str, Any]] = None, 
+        root_level: Optional[bool] = True, 
+        config_filter: Optional[Set[str]]=None
+        ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
         """
@@ -126,6 +133,8 @@ class DagFactory:
                 cls.from_directory(sub_fpath, globals, default_config, root_level=False)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if 'git/repo/dags/' in sub_fpath:
+                    if config_filter and sub_fpath not in config_filter:
+                        continue
                     if sub_fpath.split("/")[-1].startswith("_jc__"):
                         owner = sub_fpath.split("/")[4]
                         default_config['default_args']['owner'] = owner
