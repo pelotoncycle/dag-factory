@@ -133,9 +133,8 @@ class DagFactory:
             if os.path.isdir(sub_fpath):
                 cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
-                print(config_filter)
                 if config_filter and sub_fpath not in config_filter:
-                    print("skipping")
+                    logger.info(f"Skipping {sub_fpath} due to filter")
                     continue
 
                 if 'git/repo/dags/' in sub_fpath:
