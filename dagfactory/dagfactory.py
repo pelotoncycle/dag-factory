@@ -133,9 +133,10 @@ class DagFactory:
             if os.path.isdir(sub_fpath):
                 cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
+                if config_filter and sub_fpath not in config_filter:
+                    continue
+                
                 if 'git/repo/dags/' in sub_fpath:
-                    if config_filter and sub_fpath not in config_filter:
-                        continue
                     if sub_fpath.split("/")[-1].startswith("_jc__"):
                         owner = sub_fpath.split("/")[4]
                         default_config['default_args']['owner'] = owner
