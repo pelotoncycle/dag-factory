@@ -85,7 +85,8 @@ class DagFactory:
         globals: Dict[str, Any], 
         parent_default_config: Optional[Dict[str, Any]] = None, 
         root_level: Optional[bool] = True, 
-        config_filter: Optional[Set[str]]=None
+        config_filter: Optional[Set[str]]=None,
+        raise_import_errors: Optional[bool]=False
         ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
@@ -130,7 +131,7 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config, root_level=False)
+                cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if 'git/repo/dags/' in sub_fpath:
                     if config_filter and sub_fpath not in config_filter:
@@ -180,6 +181,10 @@ class DagFactory:
                 dag_id = import_info[1]
                 import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
                                                '-'*100 + '\n' + import_trc + '\n'
+                
+            if raise_import_errors:
+                raise DagFactoryConfigException(import_failures_reformatted)
+            
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
