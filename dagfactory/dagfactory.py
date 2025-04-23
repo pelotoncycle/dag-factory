@@ -131,7 +131,7 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
+                cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter, raise_import_errors=raise_import_errors)
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if config_filter and sub_fpath not in config_filter:
                     logger.info(f"Skipping {sub_fpath} due to filter")
