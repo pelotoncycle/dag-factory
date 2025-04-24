@@ -47,7 +47,7 @@ def test_yaml_dag_imports(config_dir, filter, filter_file):
 
 @cli.command()
 @click.argument('confg_fp', type=click.Path(exists=True, dir_okay=False))
-def validate_datasets_file(config_fp):
+def validate_datasets_config(config_fp):
     """Validate datasets.yml file
         dagfactory validate-datasets-file filepath
         filepath must be absolute
