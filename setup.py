@@ -24,7 +24,7 @@ VERSION = None
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-REQUIRED = ["apache-airflow[http,kubernetes]>=1.10.0", "pyyaml", "packaging"]
+REQUIRED = ["apache-airflow[http,kubernetes]>=1.10.0", "pyyaml", "packaging", "click"]
 DEV_REQUIRED = ["black", "pytest", "pylint", "pytest-cov", "tox"]
 
 try:
@@ -105,6 +105,11 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
+    entry_points={
+        'consule_scripts': [
+            'dagfactory = dagfactory.scripts.cli:cli',
+        ],
+    },
     # $ setup.py publish support.
     cmdclass={"upload": UploadCommand},
 )
