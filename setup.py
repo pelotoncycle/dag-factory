@@ -106,7 +106,7 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
     entry_points={
-        'consule_scripts': [
+        'console_scripts': [
             'dagfactory = dagfactory.scripts.cli:cli',
         ],
     },
