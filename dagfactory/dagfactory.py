@@ -79,14 +79,13 @@ class DagFactory:
 
 
     @classmethod
-    def from_directory(
+    def _from_directory(
         cls, 
         config_dir, 
         globals: Dict[str, Any], 
         parent_default_config: Optional[Dict[str, Any]] = None, 
         root_level: Optional[bool] = True, 
         config_filter: Optional[Set[str]]=None,
-        raise_import_errors: Optional[bool]=False
         ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
@@ -131,7 +130,9 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter, raise_import_errors=raise_import_errors)
+                dag_failures, general_failures = cls._from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
+                dag_import_failures = dag_import_failures | dag_failures
+                general_import_failures = general_import_failures | general_failures
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
                 if config_filter and sub_fpath not in config_filter:
                     logger.info(f"Skipping {sub_fpath} due to filter")
@@ -169,6 +170,26 @@ class DagFactory:
                                 limit=-cls.DAGBAG_IMPORT_ERROR_TRACEBACK_DEPTH)
                         else:
                             general_import_failures[sub_fpath] = str(e)
+
+        return dag_import_failures, general_import_failures
+
+
+    @classmethod
+    def from_directory(
+        cls, 
+        config_dir, 
+        globals: Dict[str, Any], 
+        config_filter: Optional[Set[str]]=None,
+        raise_import_errors: Optional[bool]=False
+        ):
+        """
+        Make instances of DagFactory for each yaml configuration files within a directory
+        """
+        dag_import_failures, general_import_failures = cls._from_directory(config_dir=config_dir, 
+                                                                           globals=globals, 
+                                                                           root_level=True, 
+                                                                           config_filter=config_filter
+                                                                           )
 
         # in the end we want to surface the error messages if there's any
         if dag_import_failures or general_import_failures:
