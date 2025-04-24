@@ -20,7 +20,7 @@ def cli(ctx, logdir):
 @click.option('--config-dir', '-d', type=click.Path(exists=True, file_okay=False), help='Directory with DAG configs to parse')
 @click.option('--filter', '-f', multiple=True, type=click.Path(exists=True, dir_okay=False), help='DAG config filespath to include. Must point to a file')
 @click.option('--filter-file', type=click.Path(exists=True, dir_okay=False), help='File containing a list of config files to include ')
-def test_yaml_dag_imports(config_dir, filter, filter_file):
+def validate_yaml_dags(config_dir, filter, filter_file):
     """Generate yaml dags to validate configurations
 
     Superset of all .yaml or .yml job config files in the config-dir (recursive)
