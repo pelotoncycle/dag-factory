@@ -96,7 +96,3 @@ def validate_datasets_file(filename):
         error_message += "\n\t".join(invalid_uris)
     if duplicate_names or duplicate_uris or invalid_uris:
         raise DatasetConfigException(error_message)
-
-if __name__ == "__main__":
-    file = sys.argv[1]
-    validate_datasets_file(file)
