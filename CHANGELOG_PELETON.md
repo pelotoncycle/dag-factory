@@ -1,10 +1,14 @@
 # Peloton Changelog
 All notable changes made by Peloton org will be documented in this file.
-## [0.18.2] - 2024-03-19
+## [0.18.5] - 2025-04-25
+- BUGFIX: changed from directory to surface all import errors, not just errors from the last config to be processed
+- Added cicd  command line interface for validating dag imports and dataset files
+
+## [0.18.2] - 2025-03-19
 - updated from directory error handling to pass each failed dag as a seperate task
 - extended dag factory config error to include dag_id, error trace and tags
 
-## [0.18.1] - 2024-03-05
+## [0.18.1] - 2025-03-05
 - added support for DatasetOrTimeSchedule
 - Timetable support for CronTriggerTimetable only as part of a DatasetOrTimeSchedule
 

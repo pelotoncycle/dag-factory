@@ -6,7 +6,7 @@ import re
 import os
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Set, List, Optional, Union
 
 import pendulum
 import yaml
@@ -79,7 +79,14 @@ class DagFactory:
 
 
     @classmethod
-    def from_directory(cls, config_dir, globals: Dict[str, Any], parent_default_config: Optional[Dict[str, Any]] = None, root_level: Optional[bool] = True):
+    def _from_directory(
+        cls, 
+        config_dir, 
+        globals: Dict[str, Any], 
+        parent_default_config: Optional[Dict[str, Any]] = None, 
+        root_level: Optional[bool] = True, 
+        config_filter: Optional[Set[str]]=None,
+        ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
         """
@@ -123,8 +130,14 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                cls.from_directory(sub_fpath, globals, default_config, root_level=False)
+                dag_failures, general_failures = cls._from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
+                dag_import_failures = dag_import_failures | dag_failures
+                general_import_failures = general_import_failures | general_failures
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
+                if config_filter and sub_fpath not in config_filter:
+                    logger.info(f"Skipping {sub_fpath} due to filter")
+                    continue
+
                 if 'git/repo/dags/' in sub_fpath:
                     if sub_fpath.split("/")[-1].startswith("_jc__"):
                         owner = sub_fpath.split("/")[4]
@@ -158,19 +171,43 @@ class DagFactory:
                         else:
                             general_import_failures[sub_fpath] = str(e)
 
+        return dag_import_failures, general_import_failures
+
+
+    @classmethod
+    def from_directory(
+        cls, 
+        config_dir, 
+        globals: Dict[str, Any], 
+        config_filter: Optional[Set[str]]=None,
+        raise_import_errors: Optional[bool]=False
+        ):
+        """
+        Make instances of DagFactory for each yaml configuration files within a directory
+        """
+        dag_import_failures, general_import_failures = cls._from_directory(config_dir=config_dir, 
+                                                                           globals=globals, 
+                                                                           root_level=True, 
+                                                                           config_filter=config_filter
+                                                                           )
+
         # in the end we want to surface the error messages if there's any
         if dag_import_failures or general_import_failures:
             # reformat import_failures so they are reader friendly
             import_failures_reformatted = 'general import errors:\n'
             for import_loc, import_trc in general_import_failures.items():
-                import_failures_reformatted += '\n' + f'Failure when generating dag from {import_loc}' + \
+                import_failures_reformatted += '\n' + f'Failure when generating dag from {import_loc}\n' + \
                                                '-'*100 + '\n' + import_trc + '\n'
             import_failures_reformatted += 'dag import errors:\n'
             for import_loc, import_info in dag_import_failures.items():
                 import_trc = import_info[0]
                 dag_id = import_info[1]
-                import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}' + \
+                import_failures_reformatted += '\n' + f'Failed to generate dag {dag_id} from {import_loc}\n' + \
                                                '-'*100 + '\n' + import_trc + '\n'
+                
+            if raise_import_errors:
+                raise DagFactoryConfigException(import_failures_reformatted)
+            
             alert_dag_id = (os.path.split(os.path.abspath(globals['__file__']))[-1]).split('.')[0] + \
                            '_dag_factory_import_error_messenger'
             
