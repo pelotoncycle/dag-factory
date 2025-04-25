@@ -1,6 +1,6 @@
 # Peloton Changelog
 All notable changes made by Peloton org will be documented in this file.
-## [0.18.5] - 2025-05-25
+## [0.18.5] - 2025-04-25
 - BUGFIX: changed from directory to surface all import errors, not just errors from the last config to be processed
 - Added cicd  command line interface for validating dag imports and dataset files
 
