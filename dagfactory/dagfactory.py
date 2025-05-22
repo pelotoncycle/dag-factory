@@ -371,6 +371,19 @@ class DagFactory:
         for dag_id, dag in dags.items():
             globals[dag_id]: DAG = dag
 
+    @staticmethod
+    def validate_dags(dags: Dict[str, DAG]) -> None:
+        """Runs dag.validate() to catch validation errors. Prevents errors when airflow loads the dags
+        :param: dags: Dict of DAGS to validate
+        """
+        for dag_id, dag in dags.items():
+            try:
+                dag.validate()
+            except Exception as err:
+                tags = getattr(dag, 'tags', [])
+                raise DagFactoryConfigException(f"Validation failed for dag {dag_id}. verify config is correct", dag_id=dag_id, tags=tags) from err
+
+
     def generate_dags(self, globals: Dict[str, Any]) -> None:
         """
         Generates DAGs from YAML config
@@ -379,6 +392,7 @@ class DagFactory:
             must be passed into globals() for Airflow to import
         """
         dags: Dict[str, Any] = self.build_dags()
+        self.validate_dags(dags)
         self.register_dags(dags, globals)
 
     def clean_dags(self, globals: Dict[str, Any]) -> None:
