@@ -33,8 +33,15 @@ class DagFactory:
     :param config_filepath: the filepath of the DAG factory YAML config file.
         Must be absolute path to file. Cannot be used with `config`.
     :type config_filepath: str
+    :param default_config: the default configuration if applicable.
+    :type default_config: dict
     :param config: DAG factory config dictionary. Cannot be user with `config_filepath`.
     :type config: dict
+    :param enforce_global_datasets: If true datasets must be declared in a datasets.yml file in the root directory
+        if false datasets can be declared inline as uris, or in datasets.yml files in any directory in the config path
+    :type enforce_global_datasets: bool
+    :param validate_dags_after_load: If true run dag.validate() to check for airflow loading errors. If false validation errors will be raised by airflow during dag bagging
+    :type validate_dags_after_load: bool
     """
 
     DAGBAG_IMPORT_ERROR_TRACEBACKS = airflow_conf.getboolean('core', 'dagbag_import_error_tracebacks')
@@ -45,7 +52,8 @@ class DagFactory:
             config_filepath: Optional[str] = None,
             default_config: Optional[dict] = None,
             config: Optional[dict] = None,
-            enforce_global_datasets: Optional[bool] = True
+            enforce_global_datasets: Optional[bool] = True,
+            validate_dags_after_load: Optional[bool] = False 
     ) -> None:
         assert bool(config_filepath) ^ bool(
             config
@@ -75,7 +83,7 @@ class DagFactory:
         if config:
             self.config: Dict[str, Any] = config
         self.enforce_global_datasets: bool = enforce_global_datasets
-
+        self.validate_dags_after_load: bool = validate_dags_after_load
 
 
     @classmethod
@@ -86,6 +94,7 @@ class DagFactory:
         parent_default_config: Optional[Dict[str, Any]] = None, 
         root_level: Optional[bool] = True, 
         config_filter: Optional[Set[str]]=None,
+        validate_dags_after_load: Optional[bool] = False 
         ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
@@ -151,7 +160,7 @@ class DagFactory:
                 try:
                     logger.info(f"Reading dag config file: {sub_fpath}")
                     logger.info(f"Generate dag: {default_config}")
-                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True)
+                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True, validate_dags_after_load=validate_dags_after_load)
                     dag_factory.generate_dags(globals)
                 except Exception as e:
                     if isinstance(e, DagFactoryConfigException):    
@@ -180,7 +189,8 @@ class DagFactory:
         config_dir, 
         globals: Dict[str, Any], 
         config_filter: Optional[Set[str]]=None,
-        raise_import_errors: Optional[bool]=False
+        raise_import_errors: Optional[bool]=False,
+        validate_dags_after_load: Optional[bool] = False
         ):
         """
         Make instances of DagFactory for each yaml configuration files within a directory
@@ -392,7 +402,8 @@ class DagFactory:
             must be passed into globals() for Airflow to import
         """
         dags: Dict[str, Any] = self.build_dags()
-        self.validate_dags(dags)
+        if self.validate_dags_after_load:
+            self.validate_dags(dags)
         self.register_dags(dags, globals)
 
     def clean_dags(self, globals: Dict[str, Any]) -> None:
