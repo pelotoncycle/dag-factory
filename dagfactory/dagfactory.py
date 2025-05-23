@@ -139,7 +139,7 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                dag_failures, general_failures = cls._from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter)
+                dag_failures, general_failures = cls._from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter, validate_dags_after_load=validate_dags_after_load)
                 dag_import_failures = dag_import_failures | dag_failures
                 general_import_failures = general_import_failures | general_failures
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
