@@ -198,7 +198,8 @@ class DagFactory:
         dag_import_failures, general_import_failures = cls._from_directory(config_dir=config_dir, 
                                                                            globals=globals, 
                                                                            root_level=True, 
-                                                                           config_filter=config_filter
+                                                                           config_filter=config_filter,
+                                                                           validate_dags_after_load=validate_dags_after_load
                                                                            )
 
         # in the end we want to surface the error messages if there's any
