@@ -139,7 +139,12 @@ class DagFactory:
         general_import_failures = {}
         for sub_fpath in subs_fpath:
             if os.path.isdir(sub_fpath):
-                dag_failures, general_failures = cls._from_directory(sub_fpath, globals, default_config, root_level=False, config_filter=config_filter, validate_dags_after_load=validate_dags_after_load)
+                dag_failures, general_failures = cls._from_directory(sub_fpath, 
+                                                                     globals, 
+                                                                     default_config, 
+                                                                     root_level=False, 
+                                                                     config_filter=config_filter, 
+                                                                     validate_dags_after_load=validate_dags_after_load)
                 dag_import_failures = dag_import_failures | dag_failures
                 general_import_failures = general_import_failures | general_failures
             elif os.path.isfile(sub_fpath) and sub_fpath.split('.')[-1] in ALLOWED_CONFIG_FILE_SUFFIX:
@@ -160,7 +165,10 @@ class DagFactory:
                 try:
                     logger.info(f"Reading dag config file: {sub_fpath}")
                     logger.info(f"Generate dag: {default_config}")
-                    dag_factory = cls(config_filepath=sub_fpath, default_config=default_config, enforce_global_datasets=True, validate_dags_after_load=validate_dags_after_load)
+                    dag_factory = cls(config_filepath=sub_fpath, 
+                                      default_config=default_config, 
+                                      enforce_global_datasets=True, 
+                                      validate_dags_after_load=validate_dags_after_load)
                     dag_factory.generate_dags(globals)
                 except Exception as e:
                     if isinstance(e, DagFactoryConfigException):    
